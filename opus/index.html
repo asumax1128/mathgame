@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#070b18">
+<title>ROTA·i — 複素数平面の航跡</title>
+<style>
+:root{--bg:#070b18;--panel:#0f1730;--panel2:#141e3d;--line:#24325e;--txt:#e8ecff;--sub:#8c98c8;--gold:#ffd166;--teal:#4fd1c5;--pink:#ff7aa8;--green:#7ee081;--violet:#a78bfa;--red:#ff6161;--amber:#f6ad55}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;overscroll-behavior:none}
+body{touch-action:manipulation;-webkit-user-select:none;user-select:none;overflow:hidden}
+button{font-family:inherit;color:inherit}
+#app{max-width:560px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;padding:calc(6px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));gap:6px}
+#top{display:flex;align-items:center;gap:8px}
+#scoreBox{flex:1;min-width:0}
+#score{font-size:28px;font-weight:800;letter-spacing:.02em;font-variant-numeric:tabular-nums;line-height:1}
+#best{font-size:11px;color:var(--sub);margin-top:2px}
+.badge{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:var(--panel);white-space:nowrap}
+#lv{color:var(--gold)}
+.tog{width:38px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:12px;font-weight:700;cursor:pointer;line-height:1}
+.tog.off{opacity:.38;text-decoration:line-through}
+#bars{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--sub)}
+#fuelWrap{flex:1;height:10px;border-radius:6px;background:#0c1328;border:1px solid var(--line);overflow:hidden;position:relative}
+#fuelBar{height:100%;width:50%;background:linear-gradient(90deg,#3bb79f,#7ee081);transition:width .25s}
+#fuelBar.low{background:linear-gradient(90deg,#d94848,#f6ad55)}
+#fuelNum{font-variant-numeric:tabular-nums;min-width:52px;color:var(--txt)}
+#chain{min-width:84px;text-align:right;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums}
+#chain.on{color:var(--gold)}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+canvas{display:block;touch-action:none}
+#toast{position:absolute;left:50%;top:0;transform:translate(-50%,0);background:rgba(15,23,48,.92);border:1px solid var(--gold);color:var(--txt);padding:10px 14px;border-radius:12px;font-size:13px;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s;max-width:90%;line-height:1.5}
+#toast b{color:var(--gold);font-size:16px}
+#toast.show{opacity:1}
+#info{min-height:40px;font-size:13px;line-height:1.45;text-align:center;color:var(--sub);display:flex;align-items:center;justify-content:center;padding:0 4px}
+#info b{color:var(--txt)}
+#info .ng{color:var(--red)}
+#info .gp{color:var(--gold);font-weight:700}
+#handRow{display:flex;gap:6px;align-items:stretch}
+#hand{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.card{position:relative;height:74px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:2px;transition:transform .08s,border-color .12s,background .12s}
+.card .lb{font-size:22px;font-weight:800;line-height:1;white-space:nowrap;font-family:"Times New Roman","Hiragino Mincho ProN",serif;font-style:normal}
+.card .sb{font-size:10px;color:var(--sub);line-height:1.2;text-align:center}
+.card .key{position:absolute;top:3px;left:6px;font-size:9px;color:#56618f}
+.card.add{--c:var(--teal)}.card.rot{--c:var(--violet)}.card.spiral{--c:var(--pink)}.card.conj{--c:var(--amber)}
+.card .lb{color:var(--c)}
+.card.sel{border-color:var(--c);background:var(--panel2);transform:translateY(-4px);box-shadow:0 0 0 1px var(--c) inset,0 6px 18px rgba(0,0,0,.4)}
+.card.ng{opacity:.45}
+.card.ng .lb{text-decoration:line-through;text-decoration-thickness:1px}
+.card.gain::after{content:attr(data-gain);position:absolute;top:-8px;right:-4px;background:var(--gold);color:#1a1300;font-size:10px;font-weight:800;padding:1px 5px;border-radius:8px}
+.card.new{animation:pop .35s ease-out}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.card.shake{animation:shake .25s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#swap{width:54px;border-radius:12px;border:1.5px dashed var(--line);background:transparent;color:var(--sub);font-size:11px;cursor:pointer;line-height:1.3}
+#swap:active{background:var(--panel)}
+.ov{position:fixed;inset:0;background:rgba(5,8,18,.88);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+.ov.hide{display:none}
+.panel{width:100%;max-width:440px;max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 20px;text-align:center}
+.panel h1{margin:0;font-size:40px;letter-spacing:.06em;font-weight:900;background:linear-gradient(90deg,#4fd1c5,#a78bfa,#ff7aa8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.panel h2{margin:0 0 10px;font-size:20px}
+.panel .tag{color:var(--sub);font-size:13px;margin:6px 0 16px;line-height:1.6}
+.btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;font-size:16px;font-weight:800;cursor:pointer;margin:8px 0;background:linear-gradient(90deg,#3bb7a8,#7c6cf0);color:#fff}
+.btn.sec{background:var(--panel2);border:1px solid var(--line);font-weight:700;color:var(--txt)}
+.btn small{display:block;font-size:11px;font-weight:500;opacity:.8;margin-top:2px}
+.rec{font-size:12px;color:var(--sub);margin-top:12px;line-height:1.7}
+.rec b{color:var(--gold)}
+.rules{text-align:left;font-size:14px;line-height:1.75}
+.rules h3{font-size:14px;color:var(--teal);margin:14px 0 4px}
+.rules ul{margin:0;padding-left:1.2em}
+.rules .m{font-family:"Times New Roman",serif;font-size:15px;color:var(--gold)}
+.rules table{border-collapse:collapse;width:100%;font-size:13px}
+.rules td{border-bottom:1px solid var(--line);padding:4px 6px}
+.big{font-size:44px;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums;margin:4px 0}
+.newrec{color:var(--pink);font-weight:800;font-size:14px;letter-spacing:.1em}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0;font-size:13px}
+.stats div{background:var(--panel2);border-radius:10px;padding:8px}
+.stats b{display:block;font-size:18px;color:var(--txt)}
+.rank{font-size:15px;color:var(--teal);font-weight:700}
+.soundRow{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.soundRow .tog{width:auto;padding:0 12px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="scoreBox"><div id="score">0</div><div id="best">BEST 0</div></div>
+    <span class="badge" id="lv">Lv 1</span>
+    <button class="tog" id="tBgm" title="BGM ON/OFF">BGM</button>
+    <button class="tog" id="tSe" title="効果音 ON/OFF">SE</button>
+    <button class="tog" id="tHelp" title="遊び方">?</button>
+  </div>
+  <div id="bars"><span>燃料</span><div id="fuelWrap"><div id="fuelBar"></div></div><span id="fuelNum">24</span><span id="chain">CHAIN 0</span></div>
+  <div id="stage"><canvas id="cv"></canvas><div id="toast"></div></div>
+  <div id="info"></div>
+  <div id="handRow"><div id="hand"></div><button id="swap">手札<br>入替<br><span style="font-size:9px">燃料−1</span></button></div>
+</div>
+
+<div class="ov" id="ovTitle">
+  <div class="panel">
+    <h1>ROTA·i</h1>
+    <div class="tag">複素数をかけて、平面を回れ。<br>軌跡でなぞった光点をまとめて回収する、複素数平面の航跡パズル。</div>
+    <button class="btn" id="bFree">フリープレイ<small>毎回ちがう盤面</small></button>
+    <button class="btn sec" id="bDaily">デイリー<small>今日は全員同じ盤面・カード順</small></button>
+    <button class="btn sec" id="bRules">遊び方</button>
+    <div class="soundRow"><button class="tog" id="tBgm2">BGM</button><button class="tog" id="tSe2">効果音</button></div>
+    <div class="rec" id="recTitle"></div>
+  </div>
+</div>
+
+<div class="ov hide" id="ovRules">
+  <div class="panel">
+    <h2>遊び方</h2>
+    <div class="rules">
+      <p>あなたの船は複素数 <span class="m">z</span>。手札のカードで <span class="m">z</span> を変えて、盤上の<b style="color:var(--gold)">光点◆</b>を回収します。</p>
+      <h3>操作</h3>
+      <ul>
+        <li><b>スマホ</b>：カードをタップ → 軌跡の予告が出る → <b>もう一度タップ</b>（または行き先の点をタップ）で発進</li>
+        <li><b>PC</b>：カードにマウスを乗せると予告、クリックで発進。キー <b>1〜4</b> でも可（2回押しで発進）、<b>S</b> で手札入替</li>
+      </ul>
+      <h3>カードの意味</h3>
+      <table>
+        <tr><td class="m" style="color:var(--teal)">+1, +i, −2 …</td><td>足し算＝平行移動（まっすぐ進む）</td></tr>
+        <tr><td class="m" style="color:var(--violet)">×i, ×(−i), ×(−1)</td><td>原点まわりの回転（90°, −90°, 180°）。円を描いて進む</td></tr>
+        <tr><td class="m" style="color:var(--pink)">×(1+i), ÷(1+i)</td><td>回転＋拡大・縮小（45°回って √2 倍 / 1/√2 倍）。ワープ</td></tr>
+        <tr><td class="m" style="color:var(--amber)">z̄（共役）</td><td>実軸で折り返し（上下反転）</td></tr>
+      </table>
+      <h3>得点</h3>
+      <ul>
+        <li>移動の<b>軌跡（線・円弧）の上にある光点はすべて回収</b>。ワープ系は着地点だけ。</li>
+        <li>1手で <b>k 個</b>回収すると <b>k² 倍</b>の得点（1個:1、2個:4、3個:9…）。</li>
+        <li>回収が続くと <b>CHAIN</b>。倍率 ×1 → ×1.5 → ×2 → ×2.5 → ×3（最大）。空振りや手札入替で 0 に戻る。</li>
+        <li>6個回収ごとにレベルアップ：新カード解禁、光点の価値が上がる、岩が現れる、燃料+3。</li>
+      </ul>
+      <h3>終了</h3>
+      <ul>
+        <li>1手ごとに燃料 −1。<b style="color:var(--green)">緑の光点</b>は燃料 +3。燃料が 0 で終了。</li>
+        <li>盤（円）の外に出る手、岩にぶつかる手、割り切れない ÷(1+i) は打てません（予告で理由が出ます）。</li>
+      </ul>
+      <h3>コツ</h3>
+      <ul>
+        <li>点線の円は今の <span class="m">|z|</span>。<b>同じ円の上の光点は、回転カードで一気になぞれる。</b></li>
+        <li><span class="m">×i</span> を4回かけると元に戻る。<span class="m">÷(1+i)</span> は <span class="m">a+b</span> が偶数の点でだけ使える。</li>
+        <li>原点 <span class="m">0</span> に止まると、かけ算カードは役に立たない（0に何をかけても0）。</li>
+      </ul>
+    </div>
+    <button class="btn" id="bRulesClose">閉じる</button>
+  </div>
+</div>
+
+<div class="ov hide" id="ovResult">
+  <div class="panel">
+    <h2 id="resMode">結果</h2>
+    <div class="newrec" id="resNew"></div>
+    <div class="big" id="resScore">0</div>
+    <div class="rank" id="resRank"></div>
+    <div class="stats" id="resStats"></div>
+    <button class="btn" id="bAgain">もう1回</button>
+    <button class="btn sec" id="bToTitle">タイトルへ</button>
+  </div>
+</div>
+
+<!-- ===== ゲームの中核ロジック（DOM非依存。シミュレーションでも同じコードを使う） ===== -->
+<script id="core">
+const R2 = 41;                 // 盤面：|z|^2 <= 41 の格子点（ガウス整数）
+const HAND = 4, GEMS_ON_BOARD = 11, START_FUEL = 32, FUEL_GEM = 3, LV_FUEL = 3, GEMS_PER_LV = 6, MAX_LV = 5;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const K = (p) => p[0] + ',' + p[1];
+const inDisc = (p) => p[0]*p[0] + p[1]*p[1] <= R2;
+const gcd = (a,b) => { a=Math.abs(a); b=Math.abs(b); while(b){[a,b]=[b,a%b]} return a; };
+const CELLS = [];
+for (let a=-6;a<=6;a++) for (let b=-6;b<=6;b++) if (inDisc([a,b])) CELLS.push([a,b]);
+const CARDS = {
+  p1:  {label:'+1',   sub:'右へ 1',        kind:'add', w:[1,0],  lv:1, wt:2},
+  m1:  {label:'−1',   sub:'左へ 1',        kind:'add', w:[-1,0], lv:1, wt:2},
+  pi:  {label:'+i',   sub:'上へ 1',        kind:'add', w:[0,1],  lv:1, wt:2},
+  mi:  {label:'−i',   sub:'下へ 1',        kind:'add', w:[0,-1], lv:1, wt:2},
+  xi:  {label:'×i',   sub:'90°回転',       kind:'rot', w:[0,1],  ang:Math.PI/2,  lv:1, wt:3},
+  xmi: {label:'×(−i)',sub:'−90°回転',      kind:'rot', w:[0,-1], ang:-Math.PI/2, lv:1, wt:3},
+  xm1: {label:'×(−1)',sub:'180°回転',      kind:'rot', w:[-1,0], ang:Math.PI,    lv:2, wt:2},
+  x1pi:{label:'×(1+i)',sub:'45°・√2倍',    kind:'spiral', w:[1,1],  lv:2, wt:2},
+  x1mi:{label:'×(1−i)',sub:'−45°・√2倍',   kind:'spiral', w:[1,-1], lv:2, wt:2},
+  conj:{label:'z̄',    sub:'実軸で折返し',   kind:'conj', lv:3, wt:2},
+  d1pi:{label:'÷(1+i)',sub:'−45°・1/√2倍', kind:'spiral', div:true, lv:3, wt:2},
+  p2:  {label:'+2',   sub:'右へ 2',        kind:'add', w:[2,0],  lv:3, wt:1},
+  m2:  {label:'−2',   sub:'左へ 2',        kind:'add', w:[-2,0], lv:3, wt:1},
+  p2i: {label:'+2i',  sub:'上へ 2',        kind:'add', w:[0,2],  lv:3, wt:1},
+  m2i: {label:'−2i',  sub:'下へ 2',        kind:'add', w:[0,-2], lv:3, wt:1},
+  pd1: {label:'+(1+i)',sub:'右上へ',       kind:'add', w:[1,1],  lv:4, wt:1},
+  md1: {label:'−(1+i)',sub:'左下へ',       kind:'add', w:[-1,-1],lv:4, wt:1},
+  pd2: {label:'+(1−i)',sub:'右下へ',       kind:'add', w:[1,-1], lv:4, wt:1},
+  md2: {label:'−(1−i)',sub:'左上へ',       kind:'add', w:[-1,1], lv:4, wt:1},
+  xm1pi:{label:'×(−1+i)',sub:'135°・√2倍', kind:'spiral', w:[-1,1], lv:5, wt:1},
+  xm1mi:{label:'×(−1−i)',sub:'−135°・√2倍',kind:'spiral', w:[-1,-1],lv:5, wt:1},
+};
+let CLUSTER_P = 0.3;
+const ROCKS_BY_LV = [0,0,2,3,4,5];
+const unitPts = (lv) => 50 + 50*lv;          // 光点1個の基本点：Lv1=100 … Lv5=300
+const chainMult = (c) => c<=0 ? 0 : Math.min(3, 1 + 0.5*(c-1));
+const cmul = (z,w) => [z[0]*w[0]-z[1]*w[1], z[0]*w[1]+z[1]*w[0]];
+
+function newGame(seed){
+  const s = {rng: mulberry32(seed>>>0), seed, z:[1,0], fuel:START_FUEL, score:0, level:1, gemsTotal:0, chain:0,
+    hand:[], gems:new Map(), rocks:new Set(), moves:0, swaps:0, maxSweep:0, maxChain:0, maxPts:0, over:false};
+  for (let i=0;i<HAND;i++) s.hand.push(drawCard(s));
+  refill(s);
+  return s;
+}
+function deckFor(lv){ return Object.keys(CARDS).filter(id => CARDS[id].lv <= lv); }
+function drawCard(s){
+  const ids = deckFor(s.level);
+  for (let tries=0; tries<20; tries++){
+    let tot = 0; for (const id of ids) tot += CARDS[id].wt;
+    let r = s.rng()*tot, pick = ids[0];
+    for (const id of ids){ r -= CARDS[id].wt; if (r < 0){ pick = id; break; } }
+    if (s.hand.filter(h => h===pick).length < 2) return pick;
+  }
+  return ids[0];
+}
+const angNorm = (x) => { const t = 2*Math.PI; x %= t; if (x < 0) x += t; return x; };
+
+// 1枚のカードを打ったときの結果（打てるか・行き先・なぞる格子点・得点）
+function evalMove(s, id){
+  const c = CARDS[id], z = s.z, a = z[0], b = z[1];
+  let dest = null, swept = [], reason = null, path = null;
+  if (c.kind === 'add'){
+    dest = [a+c.w[0], b+c.w[1]];
+    const g = gcd(c.w[0], c.w[1]);
+    for (let k=1;k<=g;k++) swept.push({p:[a+c.w[0]*k/g, b+c.w[1]*k/g], t:k/g});
+    path = {type:'line', from:z, to:dest};
+  } else if (c.kind === 'rot'){
+    dest = cmul(z, c.w);
+    if (a===0 && b===0){ reason = '原点は回しても動かない（0×w=0）'; }
+    else {
+      const r2 = a*a+b*b, th0 = Math.atan2(b,a), A = Math.abs(c.ang), sg = Math.sign(c.ang);
+      for (const p of CELLS){
+        if (p[0]*p[0]+p[1]*p[1] !== r2 || (p[0]===a && p[1]===b)) continue;
+        const d = angNorm(sg*(Math.atan2(p[1],p[0]) - th0));
+        if (d <= A + 1e-9) swept.push({p, t:d/A});
+      }
+      swept.sort((u,v) => u.t - v.t);
+    }
+    path = {type:'arc', z0:z, ang:c.ang};
+  } else if (c.kind === 'spiral'){
+    if (c.div){
+      if ((a+b) % 2 !== 0){ reason = 'a+b が奇数：(1+i)で割り切れない'; dest = [(a+b)/2, (b-a)/2]; }
+      else dest = [(a+b)/2, (b-a)/2];
+      path = {type:'spiral', z0:z, r:Math.SQRT1_2, ang:-Math.PI/4};
+    } else {
+      dest = cmul(z, c.w);
+      path = {type:'spiral', z0:z, r:Math.hypot(c.w[0],c.w[1]), ang:Math.atan2(c.w[1],c.w[0])};
+    }
+    if (!reason && a===0 && b===0) reason = '原点は何をかけても動かない';
+    if (!reason) swept.push({p:dest, t:1});
+  } else if (c.kind === 'conj'){
+    dest = [a, -b];
+    if (b === 0) reason = '実軸上では動かない';
+    else { const n = 2*Math.abs(b), sg = b>0 ? -1 : 1; for (let k=1;k<=n;k++) swept.push({p:[a, b+sg*k], t:k/n}); }
+    path = {type:'line', from:z, to:dest};
+  }
+  if (!reason && !inDisc(dest)) reason = '盤（円）の外に出る';
+  if (!reason && swept.some(q => s.rocks.has(K(q.p)))) reason = '岩にぶつかる';
+  if (reason) return {ok:false, reason, dest, path, swept:[], got:[]};
+  const got = swept.filter(q => s.gems.has(K(q.p)));
+  const k = got.length, chain = k ? s.chain+1 : 0, mult = chainMult(chain);
+  const points = Math.round(unitPts(s.level)*k*k*mult);
+  return {ok:true, dest, path, swept, got, k, chain, mult, points};
+}
+function play(s, hi){
+  if (s.over) return null;
+  const id = s.hand[hi], e = evalMove(s, id);
+  if (!e.ok) return null;
+  const prevChain = s.chain;
+  s.z = e.dest; s.fuel--; s.moves++;
+  let fuelGain = 0;
+  for (const q of e.got){ const key = K(q.p); q.type = s.gems.get(key); if (q.type === 'fuel'){ s.fuel += FUEL_GEM; fuelGain += FUEL_GEM; } s.gems.delete(key); }
+  s.chain = e.chain; s.score += e.points; s.gemsTotal += e.k;
+  s.maxSweep = Math.max(s.maxSweep, e.k); s.maxChain = Math.max(s.maxChain, s.chain); s.maxPts = Math.max(s.maxPts, e.points);
+  let levelUp = false;
+  const nl = Math.min(MAX_LV, 1 + Math.floor(s.gemsTotal / GEMS_PER_LV));
+  if (nl > s.level){ s.level = nl; s.fuel += LV_FUEL; fuelGain += LV_FUEL; placeRocks(s); levelUp = true; }
+  s.hand[hi] = drawCard(s);
+  refill(s);
+  if (s.fuel <= 0){ s.fuel = 0; s.over = true; }
+  return Object.assign({}, e, {id, levelUp, fuelGain, chainLost: prevChain>=2 && !e.k, newCardIdx:hi});
+}
+function swapHand(s){
+  if (s.over || s.fuel < 1) return false;
+  s.fuel--; s.swaps++; s.chain = 0;
+  if (s.fuel <= 0){ s.fuel = 0; s.over = true; }
+  s.hand = []; for (let i=0;i<HAND;i++) s.hand.push(drawCard(s));
+  return true;
+}
+function isFree(s, p){
+  const key = K(p);
+  return !(p[0]===0 && p[1]===0) && !(p[0]===s.z[0] && p[1]===s.z[1]) && !s.gems.has(key) && !s.rocks.has(key);
+}
+function pickFree(s, list){ const f = list.filter(p => isFree(s,p)); return f.length ? f[Math.floor(s.rng()*f.length)] : null; }
+function spawnGem(s){
+  let hasFuel = false; for (const v of s.gems.values()) if (v==='fuel') hasFuel = true;
+  const type = (!hasFuel && s.rng() < 0.2) ? 'fuel' : 'gem';
+  const roll = s.rng(); let p = null;
+  if (roll < 0.4){                                   // 今の手札で1手で届く場所
+    const opts = []; for (const id of s.hand){ const e = evalMove(s,id); if (e.ok) opts.push(e.dest); }
+    p = pickFree(s, opts);
+  } else if (roll < 0.6){                             // 円環配置：船か既存の光点と同じ円周上
+    const ref = (s.rng() < 0.5 || s.gems.size === 0) ? s.z : [...s.gems.keys()][Math.floor(s.rng()*s.gems.size)].split(',').map(Number);
+    const r2 = ref[0]*ref[0]+ref[1]*ref[1];
+    if (r2 > 0) p = pickFree(s, CELLS.filter(q => q[0]*q[0]+q[1]*q[1] === r2));
+  }
+  if (!p) p = pickFree(s, CELLS);
+  if (p) s.gems.set(K(p), type);
+}
+// 円環クラスター：同じ円周上の、角度の近い格子点に 2〜3 個まとめて置く（回転で一網打尽にできる配置）
+function spawnCluster(s){
+  const refs = [s.z, ...[...s.gems.keys()].map(k => k.split(',').map(Number))];
+  let r2;
+  if (s.rng() < 0.4 && (s.z[0]||s.z[1])) r2 = s.z[0]*s.z[0] + s.z[1]*s.z[1];
+  else { const RR = [5,10,13,17,20,25,26,29,34,37,40,41]; r2 = RR[Math.floor(s.rng()*RR.length)]; }
+  const ring = CELLS.filter(q => q[0]*q[0]+q[1]*q[1] === r2).sort((u,v) => Math.atan2(u[1],u[0]) - Math.atan2(v[1],v[0]));
+  if (ring.length < 4) return false;
+  const want = 2 + (s.rng() < 0.35 ? 1 : 0), start = Math.floor(s.rng()*ring.length);
+  let placed = 0;
+  for (let j=0; j<ring.length && placed<want && s.gems.size < GEMS_ON_BOARD+1; j++){
+    const q = ring[(start + j) % ring.length];
+    const th = angNorm(Math.atan2(q[1],q[0]) - Math.atan2(ring[start][1], ring[start][0]));
+    if (th > Math.PI/2 + 1e-9) break;
+    if (isFree(s, q)){ s.gems.set(K(q), 'gem'); placed++; }
+  }
+  return placed > 0;
+}
+function refill(s){ let n = 0; while (s.gems.size < GEMS_ON_BOARD && n++ < 50){ if (s.rng() < CLUSTER_P) spawnCluster(s) || spawnGem(s); else spawnGem(s); } }
+function placeRocks(s){
+  s.rocks.clear();
+  const n = ROCKS_BY_LV[s.level] || 0;
+  for (let i=0;i<n;i++){
+    const cand = CELLS.filter(p => isFree(s,p) && p[0]*p[0]+p[1]*p[1] >= 4 && Math.abs(p[0]-s.z[0]) + Math.abs(p[1]-s.z[1]) > 2);
+    if (cand.length) s.rocks.add(K(cand[Math.floor(s.rng()*cand.length)]));
+  }
+}
+// 軌跡上の位置（描画・アニメ用）
+function pathAt(path, t){
+  if (path.type === 'line') return [path.from[0]+(path.to[0]-path.from[0])*t, path.from[1]+(path.to[1]-path.from[1])*t];
+  const r0 = Math.hypot(path.z0[0], path.z0[1]), th0 = Math.atan2(path.z0[1], path.z0[0]);
+  const r = path.type === 'arc' ? r0 : r0*Math.pow(path.r, t), th = th0 + path.ang*t;
+  return [r*Math.cos(th), r*Math.sin(th)];
+}
+function fmtZ(p){
+  const a = p[0], b = p[1], m = (x) => x<0 ? '−'+(-x) : ''+x;
+  if (b === 0) return m(a);
+  const bi = Math.abs(b)===1 ? 'i' : Math.abs(b)+'i';
+  if (a === 0) return (b<0?'−':'') + bi;
+  return m(a) + (b<0?' − ':' + ') + bi;
+}
+</script>
+
+<!-- ===== 音（Web Audio API のみで生成） ===== -->
+<script>
+const AU = (() => {
+  // 音の世界：D の自然短音階（エオリアン）。効果音は D マイナーペンタトニック（D F G A C）だけを使う
+  const PENTA = [0,3,5,7,10];
+  const mtof = (m) => 440*Math.pow(2,(m-69)/12);
+  const penta = (deg, base=62) => base + 12*Math.floor(deg/5) + PENTA[((deg%5)+5)%5];
+  let probes = null, ctx = null, master, bgmBus, seBus, delay, fb, noiseBuf;
+  let bgmOn = true, seOn = true, timer = null, nextT = 0, step = 0, intensity = 1;
+  try { const st = JSON.parse(localStorage.getItem('rotai_sound') || '{}'); if (st.bgm === false) bgmOn = false; if (st.se === false) seOn = false; } catch(e){}
+  function save(){ try { localStorage.setItem('rotai_sound', JSON.stringify({bgm:bgmOn, se:seOn})); } catch(e){} }
+  function init(){
+    if (ctx) { if (ctx.state === 'suspended' && !document.hidden) ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0.9;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+    master.connect(comp); comp.connect(ctx.destination);
+    bgmBus = ctx.createGain(); bgmBus.gain.value = bgmOn ? 1 : 0; bgmBus.connect(master);
+    seBus = ctx.createGain(); seBus.gain.value = seOn ? 1 : 0; seBus.connect(master);
+    probes = {bgm: ctx.createAnalyser(), se: ctx.createAnalyser()}; bgmBus.connect(probes.bgm); seBus.connect(probes.se);
+    // 共通の残響（ディレイ）で BGM と効果音の空間を揃える
+    delay = ctx.createDelay(1); delay.delayTime.value = 60/88*0.75; fb = ctx.createGain(); fb.gain.value = 0.28;
+    const dl = ctx.createBiquadFilter(); dl.type = 'lowpass'; dl.frequency.value = 2400;
+    const wet = ctx.createGain(); wet.gain.value = 0.35;
+    delay.connect(dl); dl.connect(fb); fb.connect(delay); dl.connect(wet); wet.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate*1, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0); for (let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    startBgm();
+  }
+  // --- 楽器 ---
+  function tone(bus, {f, t=0, dur=0.3, type='sine', vol=0.2, atk=0.005, rel=null, glide=null, send=0, lp=null, detune=0}){
+    if (!ctx) return;
+    const t0 = Math.max(ctx.currentTime, t);
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0); o.detune.value = detune;
+    if (glide) o.frequency.exponentialRampToValueAtTime(glide, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + (rel||0));
+    let node = o;
+    if (lp){ const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = lp; o.connect(fl); node = fl; }
+    node.connect(g); g.connect(bus);
+    if (send){ const sg = ctx.createGain(); sg.gain.value = send; g.connect(sg); sg.connect(delay); }
+    o.start(t0); o.stop(t0 + dur + (rel||0) + 0.05);
+  }
+  function noise(bus, {t, dur=0.15, vol=0.1, type='bandpass', f=2000, f2=null, q=1}){
+    if (!ctx) return;
+    const t0 = Math.max(ctx.currentTime, t);
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t0); fl.Q.value = q;
+    if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t0+dur);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    src.connect(fl); fl.connect(g); g.connect(bus); src.start(t0); src.stop(t0+dur+0.05);
+  }
+  const now = () => ctx ? ctx.currentTime : 0;
+  const bell = (m, t, vol=0.16, send=0.5) => { // 鐘っぽい音（基音＋倍音）
+    tone(seBus, {f:mtof(m), t, dur:0.5, vol, send});
+    tone(seBus, {f:mtof(m)*2.01, t, dur:0.18, vol:vol*0.35, send});
+    tone(seBus, {f:mtof(m)*3, t, dur:0.08, vol:vol*0.15, type:'triangle'});
+  };
+  // --- 効果音 ---
+  const SE = {
+    select(kind){ if (!ctx||!seOn) return; const m = {add:81, rot:86, spiral:84, conj:79}[kind] || 81; tone(seBus, {f:mtof(m), t:now(), dur:0.06, vol:0.07, type:'triangle'}); },
+    deny(){ if (!ctx||!seOn) return; const t = now(); tone(seBus, {f:mtof(38), t, dur:0.16, vol:0.22, type:'sine', glide:mtof(34)}); noise(seBus, {t, dur:0.08, vol:0.05, type:'lowpass', f:500}); },
+    move(kind, dur, ang){ if (!ctx||!seOn) return; const t = now();
+      if (kind === 'add' || kind === 'conj') noise(seBus, {t, dur:dur+0.05, vol:0.05, f:900, f2:2600, q:2});
+      else if (kind === 'rot'){ const up = ang > 0; tone(seBus, {f:mtof(up?62:69), t, dur, vol:0.07, type:'triangle', glide:mtof(up?69:62), send:0.3}); noise(seBus, {t, dur, vol:0.03, f:up?1200:2400, f2:up?2400:1200, q:3}); }
+      else { tone(seBus, {f:mtof(50), t, dur, vol:0.1, type:'sawtooth', glide:mtof(ang>0?62:43), lp:900, send:0.3}); noise(seBus, {t, dur, vol:0.04, f:600, f2:3000, q:4}); }
+    },
+    // 光点の音程は「偏角」で決まる：反時計回りになぞると音階が上がる
+    gem(p, delayS, idx, chain){ if (!ctx||!seOn) return; const th = angNorm(Math.atan2(p[1],p[0]));
+      const deg = Math.round(th/(2*Math.PI)*10) % 10; const m = penta(deg, 74);
+      const t = now() + delayS; bell(m, t, 0.15 + Math.min(idx,4)*0.01);
+      if (chain >= 3) tone(seBus, {f:mtof(m+7), t:t+0.03, dur:0.3, vol:0.05, send:0.6});
+      if (chain >= 5) tone(seBus, {f:mtof(m+12), t:t+0.06, dur:0.3, vol:0.04, send:0.6});
+    },
+    fuel(delayS){ if (!ctx||!seOn) return; const t = now()+delayS; [74,81,86].forEach((m,i) => tone(seBus, {f:mtof(m), t:t+0.06*i, dur:0.12, vol:0.08, type:'square', lp:2200})); },
+    big(k, delayS){ if (!ctx||!seOn) return; const t = now()+delayS; [62,65,69,72,76].slice(0, Math.min(5,k+1)).forEach((m,i) => tone(seBus, {f:mtof(m), t:t+i*0.015, dur:0.9, vol:0.05, type:'triangle', send:0.5})); noise(seBus,{t, dur:0.5, vol:0.04, type:'highpass', f:5000}); },
+    chainLost(){ if (!ctx||!seOn) return; const t = now()+0.05; tone(seBus, {f:mtof(57), t, dur:0.2, vol:0.07, type:'triangle'}); tone(seBus, {f:mtof(53), t:t+0.12, dur:0.3, vol:0.06, type:'triangle'}); },
+    swap(){ if (!ctx||!seOn) return; const t = now(); for (let i=0;i<4;i++) noise(seBus, {t:t+i*0.05, dur:0.04, vol:0.06, f:3000+i*500, q:4}); },
+    levelUp(){ if (!ctx||!seOn) return; const t = now()+0.15; [62,65,69,72,76,79].forEach((m,i) => bell(m+12, t+i*0.08, 0.11, 0.6)); },
+    start(){ if (!ctx||!seOn) return; const t = now(); [62,69,74].forEach((m,i) => bell(m, t+i*0.09, 0.1)); },
+    over(){ if (!ctx||!seOn) return; const t = now()+0.1; [81,79,74,69,62].forEach((m,i) => bell(m, t+i*0.16, 0.1, 0.6)); },
+    record(){ if (!ctx||!seOn) return; const t = now()+0.9; [74,77,81,86].forEach((m,i) => bell(m, t+i*0.1, 0.1, 0.6)); },
+  };
+  // --- BGM：88BPM、4小節ループ（Dm9 → B♭maj7 → Gm9 → Am7）。レベルに応じて層が増える ---
+  const BPM = 88, S8 = 60/BPM/2;
+  const CH = [ {root:38, notes:[62,65,69,72,76]}, {root:34, notes:[58,62,65,69]}, {root:43, notes:[55,58,62,65,69]}, {root:45, notes:[57,60,64,67]} ];
+  const ARP = [0,2,1,3,2,4,3,1];
+  function schedStep(st, t){
+    const bar = Math.floor(st/8) % 4, s8 = st % 8, ch = CH[bar];
+    if (s8 === 0) ch.notes.slice(0,4).forEach((m,i) => {               // パッド
+      tone(bgmBus, {f:mtof(m), t, dur:S8*8-0.2, vol:0.022, type:'triangle', atk:0.5, rel:0.4, lp:1100, detune:i%2?6:-6});
+    });
+    if (s8 === 0 || s8 === 4) tone(bgmBus, {f:mtof(ch.root), t, dur:S8*3, vol:0.07, type:'sine', atk:0.02});           // ベース
+    if (s8 === 6 && intensity >= 2) tone(bgmBus, {f:mtof(ch.root+12), t, dur:S8*1.5, vol:0.035, type:'sine'});
+    if (intensity >= 2){ const m = ch.notes[ARP[s8] % ch.notes.length] + 12; tone(bgmBus, {f:mtof(m), t, dur:0.22, vol:0.018, type:'sine', send:0.4}); }   // アルペジオ
+    if (intensity >= 3 && s8 % 2 === 1) noise(bgmBus, {t, dur:0.04, vol:0.018, type:'highpass', f:7000});            // ハイハット
+    if (intensity >= 4 && (s8 === 2 || s8 === 5)) tone(bgmBus, {f:mtof(ch.notes[(st>>3)%ch.notes.length]+24), t, dur:0.4, vol:0.012, type:'sine', send:0.6});
+    if (intensity >= 5 && s8 === 0) noise(bgmBus, {t, dur:0.12, vol:0.03, type:'lowpass', f:180});
+  }
+  function tick(){
+    if (!ctx || ctx.state !== 'running' || !bgmOn) return;
+    if (nextT < ctx.currentTime) nextT = ctx.currentTime + 0.05;
+    while (nextT < ctx.currentTime + 0.25){ schedStep(step, nextT); step++; nextT += S8; }
+  }
+  function startBgm(){ if (timer) return; nextT = 0; timer = setInterval(tick, 60); }
+  function setBgm(on){ bgmOn = on; save(); if (ctx){ bgmBus.gain.cancelScheduledValues(ctx.currentTime); bgmBus.gain.setTargetAtTime(on?1:0, ctx.currentTime, 0.08); if (on){ nextT = 0; } } }
+  function setSe(on){ seOn = on; save(); if (ctx){ seBus.gain.cancelScheduledValues(ctx.currentTime); seBus.gain.setTargetAtTime(on?1:0, ctx.currentTime, 0.03); } }
+  // タブを離れたら音を完全に止める（AudioContext ごと一時停止）
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend(); else { ctx.resume(); nextT = 0; }
+  });
+  function level(which){ if (!probes) return 0; const a = probes[which], d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d); let m = 0; for (const v of d) m = Math.max(m, Math.abs(v)); return m; }
+  return { init, SE, level, setBgm, setSe, get bgmOn(){return bgmOn}, get seOn(){return seOn}, set intensity(v){intensity=v}, get state(){ return ctx ? ctx.state : 'none'; } };
+})();
+</script>
+
+<!-- ===== 画面・操作 ===== -->
+<script>
+const $ = (id) => document.getElementById(id);
+const cv = $('cv'), cx = cv.getContext('2d');
+let S = null, mode = 'free', sel = -1, hover = -1, anim = null, lastPtr = 'mouse', size = 300, dpr = 1;
+let particles = [], floats = [], shake = 0, startTime = 0, toastTimer = null;
+const COLORS = {add:'#4fd1c5', rot:'#a78bfa', spiral:'#ff7aa8', conj:'#f6ad55'};
+const store = { get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} } };
+const todayKey = () => { const d = new Date(); return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate(); };
+const bestKey = () => mode === 'daily' ? 'rotai_best_d' + todayKey() : 'rotai_best_free';
+
+// ---------- レイアウト ----------
+function layout(){
+  const st = $('stage'); const w = st.clientWidth, h = st.clientHeight;
+  size = Math.max(200, Math.floor(Math.min(w, h)));
+  dpr = Math.min(3, window.devicePixelRatio || 1);
+  cv.width = size*dpr; cv.height = size*dpr; cv.style.width = size+'px'; cv.style.height = size+'px';
+}
+window.addEventListener('resize', layout);
+const U = () => size / (2*Math.sqrt(R2) + 1.6);
+const toS = (p) => [size/2 + p[0]*U(), size/2 - p[1]*U()];
+
+// ---------- 描画 ----------
+function draw(ts){
+  requestAnimationFrame(draw);
+  if (!S) return;
+  const u = U(), c = size/2, R = Math.sqrt(R2)*u, time = ts/1000;
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,size,size);
+  if (shake > 0){ cx.translate((Math.random()-.5)*shake, (Math.random()-.5)*shake); shake *= 0.86; if (shake < 0.3) shake = 0; }
+  // 盤
+  const g = cx.createRadialGradient(c,c,0,c,c,R+u*0.6); g.addColorStop(0,'#111b3b'); g.addColorStop(1,'#0a1028');
+  cx.fillStyle = g; cx.beginPath(); cx.arc(c,c,R+u*0.55,0,Math.PI*2); cx.fill();
+  cx.strokeStyle = '#2a3a6e'; cx.lineWidth = 1.5; cx.stroke();
+  cx.lineWidth = 1;
+  for (let r=1;r<=6;r++){ cx.strokeStyle = r===1 ? 'rgba(167,139,250,.35)' : 'rgba(80,100,170,.16)'; cx.beginPath(); cx.arc(c,c,r*u,0,Math.PI*2); cx.stroke(); }
+  cx.strokeStyle = 'rgba(120,140,210,.35)'; cx.beginPath(); cx.moveTo(c-R-u*0.5,c); cx.lineTo(c+R+u*0.5,c); cx.moveTo(c,c-R-u*0.5); cx.lineTo(c,c+R+u*0.5); cx.stroke();
+  cx.fillStyle = 'rgba(140,152,200,.7)'; cx.font = `${Math.max(9,u*0.36)}px serif`; cx.textAlign = 'left'; cx.textBaseline = 'top';
+  cx.fillText('Re', c+R+u*0.05, c+3); cx.fillText('Im', c+4, c-R-u*0.55);
+  cx.fillText('1', c+u+2, c+2); cx.fillText('i', c+3, c-u-2 - u*0.3);
+  // 格子点
+  cx.fillStyle = 'rgba(150,165,220,.35)';
+  for (const p of CELLS){ const q = toS(p); cx.beginPath(); cx.arc(q[0],q[1],Math.max(1.2,u*0.06),0,Math.PI*2); cx.fill(); }
+  // 原点
+  cx.fillStyle = 'rgba(167,139,250,.6)'; cx.beginPath(); cx.arc(c,c,u*0.12,0,Math.PI*2); cx.fill();
+  // 今の |z| の円
+  const shipP = anim ? pathAt(anim.e.path, easeT(anim.t)) : S.z;
+  const rz = Math.hypot(S.z[0], S.z[1]);
+  if (!anim && rz > 0){ cx.setLineDash([3,5]); cx.strokeStyle = 'rgba(79,209,197,.45)'; cx.lineWidth = 1.2; cx.beginPath(); cx.arc(c,c,rz*u,0,Math.PI*2); cx.stroke(); cx.setLineDash([]); }
+  // 岩
+  for (const key of S.rocks){ const p = key.split(',').map(Number), q = toS(p), rr = u*0.36;
+    cx.fillStyle = '#2b1d2a'; cx.strokeStyle = '#ff6161'; cx.lineWidth = 1.5; cx.beginPath();
+    for (let i=0;i<6;i++){ const a = i*Math.PI/3 + 0.3; cx.lineTo(q[0]+rr*Math.cos(a)*(i%2?0.85:1), q[1]+rr*Math.sin(a)*(i%2?0.85:1)); }
+    cx.closePath(); cx.fill(); cx.stroke(); }
+  // 予告
+  const pi = previewIdx();
+  let pe = null;
+  if (pi >= 0 && !anim && !S.over){ pe = evalMove(S, S.hand[pi]); drawPath(pe, CARDS[S.hand[pi]].kind); }
+  // 光点
+  const gotKeys = pe && pe.ok ? new Set(pe.got.map(q => K(q.p))) : null;
+  for (const [key, type] of S.gems){ const p = key.split(',').map(Number), q = toS(p);
+    const pulse = 1 + 0.08*Math.sin(time*3 + p[0]*1.3 + p[1]*0.7), rr = u*0.27*pulse;
+    const col = type === 'fuel' ? '#7ee081' : '#ffd166';
+    cx.save(); cx.shadowColor = col; cx.shadowBlur = gotKeys && gotKeys.has(key) ? 22 : 10; cx.fillStyle = col;
+    cx.beginPath(); cx.moveTo(q[0], q[1]-rr); cx.lineTo(q[0]+rr*0.8, q[1]); cx.lineTo(q[0], q[1]+rr); cx.lineTo(q[0]-rr*0.8, q[1]); cx.closePath(); cx.fill(); cx.restore();
+    if (type === 'fuel'){ cx.fillStyle = '#0b2a14'; cx.font = `bold ${u*0.34}px sans-serif`; cx.textAlign='center'; cx.textBaseline='middle'; cx.fillText('+', q[0], q[1]+1); }
+    if (gotKeys && gotKeys.has(key)){ cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.beginPath(); cx.arc(q[0],q[1],u*0.42,0,Math.PI*2); cx.stroke(); }
+  }
+  // 船
+  const sp = toS(shipP);
+  cx.save(); cx.shadowColor = '#4fd1c5'; cx.shadowBlur = 18; cx.fillStyle = '#e8fffb';
+  cx.beginPath(); cx.arc(sp[0], sp[1], u*0.24, 0, Math.PI*2); cx.fill(); cx.restore();
+  cx.strokeStyle = '#4fd1c5'; cx.lineWidth = 2; cx.beginPath(); cx.arc(sp[0], sp[1], u*0.36 + Math.sin(time*4)*1.5, 0, Math.PI*2); cx.stroke();
+  // 原点から船へのベクトル（偏角の感覚を育てる）
+  if (!anim && rz > 0){ cx.strokeStyle = 'rgba(79,209,197,.25)'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(c,c); cx.lineTo(sp[0],sp[1]); cx.stroke(); }
+  // パーティクル・浮き文字
+  for (const pt of particles){ pt.x += pt.vx; pt.y += pt.vy; pt.vx *= 0.94; pt.vy *= 0.94; pt.life -= 0.025;
+    cx.globalAlpha = Math.max(0, pt.life); cx.fillStyle = pt.col; cx.fillRect(pt.x-1.5, pt.y-1.5, 3, 3); }
+  cx.globalAlpha = 1; particles = particles.filter(p => p.life > 0);
+  for (const f of floats){ f.y -= 0.6; f.life -= 0.018; cx.globalAlpha = Math.max(0, Math.min(1, f.life*1.5));
+    cx.fillStyle = f.col; cx.font = `800 ${f.sz}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.strokeStyle = 'rgba(0,0,0,.6)'; cx.lineWidth = 3; cx.strokeText(f.txt, f.x, f.y); cx.fillText(f.txt, f.x, f.y); }
+  cx.globalAlpha = 1; floats = floats.filter(f => f.life > 0);
+  if (anim) stepAnim();
+}
+function drawPath(e, kind){
+  const col = e.ok ? COLORS[kind] : '#ff6161';
+  cx.save(); cx.strokeStyle = col; cx.lineWidth = 2.5; cx.setLineDash(e.ok ? [7,5] : [3,4]); cx.globalAlpha = e.ok ? 0.95 : 0.7;
+  cx.beginPath(); for (let i=0;i<=48;i++){ const q = toS(pathAt(e.path, i/48)); i ? cx.lineTo(q[0],q[1]) : cx.moveTo(q[0],q[1]); } cx.stroke();
+  cx.setLineDash([]);
+  // 矢じり
+  const q1 = toS(pathAt(e.path, 1)), q0 = toS(pathAt(e.path, 0.96)), an = Math.atan2(q1[1]-q0[1], q1[0]-q0[0]), u = U();
+  cx.fillStyle = col; cx.beginPath(); cx.moveTo(q1[0], q1[1]); cx.lineTo(q1[0]-u*0.32*Math.cos(an-0.45), q1[1]-u*0.32*Math.sin(an-0.45)); cx.lineTo(q1[0]-u*0.32*Math.cos(an+0.45), q1[1]-u*0.32*Math.sin(an+0.45)); cx.closePath(); cx.fill();
+  cx.lineWidth = 2; cx.beginPath(); cx.arc(q1[0], q1[1], u*0.42, 0, Math.PI*2); cx.stroke();
+  if (e.ok && e.points > 0){ cx.font = `800 ${Math.max(12,u*0.5)}px system-ui,sans-serif`; cx.textAlign = 'center'; cx.textBaseline = 'bottom'; cx.fillStyle = '#ffd166'; cx.strokeStyle = 'rgba(0,0,0,.7)'; cx.lineWidth = 3;
+    const ty = q1[1] - u*0.55 < 14 ? q1[1] + u*1.1 : q1[1] - u*0.55; cx.strokeText('+'+e.points, q1[0], ty); cx.fillText('+'+e.points, q1[0], ty); }
+  cx.restore();
+}
+const easeT = (t) => t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+
+// ---------- アニメーション ----------
+function stepAnim(){
+  const a = anim; const el = (performance.now() - a.t0) / a.dur; a.t = Math.min(1, el);
+  const et = easeT(a.t);
+  for (const q of a.pending) if (!q.done && et >= q.t - 1e-6){ q.done = true; burst(q); }
+  if (a.t >= 1){ anim = null; afterMove(a.e); }
+}
+function burst(q){
+  const s = toS(q.p), col = q.type === 'fuel' ? '#7ee081' : '#ffd166';
+  for (let i=0;i<14;i++){ const an = Math.random()*Math.PI*2, v = 1.5 + Math.random()*3; particles.push({x:s[0], y:s[1], vx:Math.cos(an)*v, vy:Math.sin(an)*v, life:1, col}); }
+  if (q.type === 'fuel') floats.push({x:s[0], y:s[1]-10, txt:'燃料+'+FUEL_GEM, col:'#7ee081', sz:13, life:1});
+}
+function startMove(hi){
+  const st = S; const id = st.hand[hi], kind = CARDS[id].kind;
+  const r = play(st, hi); if (!r) return;
+  sel = -1; hover = -1;
+  const len = r.path.type === 'line' ? Math.hypot(r.dest[0]-r.path.from[0], r.dest[1]-r.path.from[1]) : Math.abs(r.path.ang)*Math.hypot(r.path.z0[0], r.path.z0[1]);
+  const dur = Math.min(620, Math.max(240, 150 + len*55));
+  anim = {e:r, t0:performance.now(), dur, t:0, pending:r.got.map(q => Object.assign({}, q, {done:false}))};
+  AU.SE.move(kind, dur/1000, r.path.ang || 0);
+  r.got.forEach((q,i) => { const tt = timeForEased(q.t)*dur/1000; AU.SE.gem(q.p, tt, i, r.chain); if (q.type === 'fuel') AU.SE.fuel(tt+0.05); });
+  renderHand(true);
+  updateHud();
+}
+function timeForEased(target){ let lo=0, hi=1; for (let i=0;i<20;i++){ const m=(lo+hi)/2; if (easeT(m) < target) lo = m; else hi = m; } return hi; }
+function afterMove(r){
+  const s = toS(r.dest);
+  if (r.points > 0){
+    floats.push({x:s[0], y:s[1]-16, txt:'+'+r.points, col:'#ffd166', sz: r.k>=3 ? 26 : r.k===2 ? 21 : 17, life:1.3});
+    if (r.k >= 2){ floats.push({x:s[0], y:s[1]+18, txt: r.k+'連 ×'+(r.k*r.k), col:'#ff7aa8', sz:14, life:1.2}); AU.SE.big(r.k, 0); shake = 3 + r.k*2; }
+  }
+  if (r.chainLost) AU.SE.chainLost();
+  if (r.levelUp){ AU.SE.levelUp(); AU.intensity = S.level; showToast(levelText(S.level)); }
+  updateHud(); renderHand(false);
+  if (S.over) setTimeout(endGame, 650);
+}
+function levelText(lv){
+  const t = {2:'新カード：×(−1)・×(1+i)・×(1−i)<br>岩が出現。軌跡が岩に当たる手は打てない',
+             3:'新カード：z̄（共役）・÷(1+i)・±2・±2i<br>÷(1+i) は a+b が偶数の点でだけ使える',
+             4:'新カード：±(1+i)・±(1−i)（斜め移動）',
+             5:'新カード：×(−1+i)・×(−1−i)<br>光点1個 300点'}[lv] || '';
+  return `<b>LEVEL ${lv}</b><br>${t}<br>燃料 +${LV_FUEL}`;
+}
+function showToast(html){ const t = $('toast'); t.innerHTML = html; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+
+// ---------- HUD・手札 ----------
+function previewIdx(){ return hover >= 0 ? hover : sel; }
+function updateHud(){
+  $('score').textContent = S.score.toLocaleString();
+  const best = store.get(bestKey(), 0);
+  $('best').textContent = (mode === 'daily' ? 'DAILY ' : '') + 'BEST ' + Math.max(best, S.score).toLocaleString();
+  $('lv').textContent = 'Lv ' + S.level + ' ・ ' + (S.gemsTotal % GEMS_PER_LV) + '/' + GEMS_PER_LV;
+  if (S.level >= MAX_LV) $('lv').textContent = 'Lv MAX';
+  const fb = $('fuelBar'); fb.style.width = Math.min(100, S.fuel/30*100) + '%'; fb.classList.toggle('low', S.fuel <= 5);
+  $('fuelNum').textContent = '残り ' + S.fuel;
+  const ch = $('chain'); ch.textContent = S.chain ? `CHAIN ${S.chain} ×${chainMult(S.chain)}` : 'CHAIN 0'; ch.classList.toggle('on', S.chain > 0);
+  updateInfo();
+}
+function updateInfo(){
+  const pi = previewIdx(), el = $('info');
+  if (!S || S.over){ el.innerHTML = ''; return; }
+  if (pi >= 0 && !anim){
+    const id = S.hand[pi], e = evalMove(S, id), c = CARDS[id];
+    if (!e.ok){ el.innerHTML = `<span><b>${c.label}</b>　<span class="ng">✕ ${e.reason}</span></span>`; return; }
+    const tail = e.k ? `光点 <b>${e.k}</b>個 → <span class="gp">+${e.points}</span>${e.mult>1 ? `（CHAIN ×${e.mult}）` : ''}` : (S.chain ? '<span class="ng">空振り：CHAIN が切れる</span>' : '光点なし');
+    const how = lastPtr === 'mouse' ? 'クリックで発進' : 'もう一度タップで発進';
+    const lb = id === 'conj' ? 'z̄' : c.label;
+    el.innerHTML = `<span><b style="color:${COLORS[c.kind]}">${lb}</b>：${fmtZ(S.z)} → <b>${fmtZ(e.dest)}</b>　${tail}<br><span style="font-size:11px">${how}</span></span>`;
+    return;
+  }
+  const r2 = S.z[0]*S.z[0] + S.z[1]*S.z[1];
+  let hint = '';
+  if (!S.hand.some(id => evalMove(S, id).ok)) hint = '<span class="ng">打てるカードがない → 右の「手札入替」へ</span>';
+  else if (S.moves === 0) hint = (lastPtr === 'mouse' ? 'カードにマウスを乗せると軌跡が見える' : 'カードをタップすると軌跡が見える');
+  else if (S.moves < 4) hint = '点線の円＝今の |z|。同じ円上の光点は ×i でまとめて取れる';
+  el.innerHTML = `<span>z = <b>${fmtZ(S.z)}</b>　|z|² = ${r2}${hint ? '<br><span style="font-size:11px">'+hint+'</span>' : ''}</span>`;
+}
+function renderHand(locked){
+  const h = $('hand'); h.innerHTML = '';
+  S.hand.forEach((id, i) => {
+    const c = CARDS[id], e = locked ? null : evalMove(S, id);
+    const d = document.createElement('button');
+    d.className = 'card ' + c.kind + (i === sel ? ' sel' : '') + (e && !e.ok ? ' ng' : '') + (e && e.ok && e.k ? ' gain' : '');
+    if (e && e.ok && e.k) d.dataset.gain = '◆' + e.k;
+    if (S.lastNew === i) d.classList.add('new');
+    const lb = id === 'conj' ? '<span style="text-decoration:overline">z</span>' : c.label;
+    d.innerHTML = `<span class="key">${i+1}</span><span class="lb">${lb}</span><span class="sb">${c.sub}</span>`;
+    d.addEventListener('pointerdown', (ev) => { lastPtr = ev.pointerType || 'mouse'; });
+    d.addEventListener('pointerenter', (ev) => { if (ev.pointerType === 'mouse' && !anim){ hover = i; updateInfo(); } });
+    d.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse'){ hover = -1; updateInfo(); } });
+    d.addEventListener('click', () => onCard(i, d));
+    h.appendChild(d);
+  });
+  S.lastNew = -1;
+}
+function onCard(i, el){
+  if (!S || S.over || anim) return;
+  AU.init();
+  const e = evalMove(S, S.hand[i]);
+  const direct = lastPtr === 'mouse' || sel === i;
+  if (direct){
+    if (!e.ok){ AU.SE.deny(); sel = i; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); setTimeout(() => renderHand(false), 260); updateInfo(); return; }
+    S.lastNew = i; startMove(i); return;
+  }
+  sel = i; AU.SE.select(CARDS[S.hand[i]].kind); renderHand(false); updateInfo();
+}
+function selectKey(i){
+  if (!S || S.over || anim || i >= S.hand.length) return;
+  AU.init(); lastPtr = 'key';
+  if (sel === i){ const e = evalMove(S, S.hand[i]); if (!e.ok){ AU.SE.deny(); const el = $('hand').children[i]; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; } S.lastNew = i; startMove(i); return; }
+  sel = i; hover = -1; AU.SE.select(CARDS[S.hand[i]].kind); renderHand(false); updateInfo();
+}
+cv.addEventListener('pointerdown', (ev) => {
+  lastPtr = ev.pointerType || 'mouse';
+  if (!S || S.over || anim) return;
+  const r = cv.getBoundingClientRect(), u = U();
+  const x = (ev.clientX - r.left - size/2)/u, y = -(ev.clientY - r.top - size/2)/u;
+  const p = [Math.round(x), Math.round(y)];
+  if (Math.hypot(x-p[0], y-p[1]) > 0.55) return;
+  // 選択中カードの行き先をタップしたら発進。未選択なら、その点へ行けるカードを予告
+  if (sel >= 0){ const e = evalMove(S, S.hand[sel]); if (e.ok && e.dest[0]===p[0] && e.dest[1]===p[1]){ AU.init(); S.lastNew = sel; startMove(sel); return; } }
+  let best = -1, bp = -1;
+  S.hand.forEach((id, i) => { const e = evalMove(S, id); if (e.ok && e.dest[0]===p[0] && e.dest[1]===p[1] && e.points > bp){ bp = e.points; best = i; } });
+  if (best >= 0){ AU.init(); sel = best; hover = -1; AU.SE.select(CARDS[S.hand[best]].kind); renderHand(false); updateInfo(); }
+});
+$('swap').addEventListener('click', doSwap);
+function doSwap(){
+  if (!S || S.over || anim) return;
+  AU.init();
+  if (!swapHand(S)){ AU.SE.deny(); return; }
+  sel = -1; hover = -1; AU.SE.swap(); S.lastNew = -1; renderHand(false);
+  [...$('hand').children].forEach(c => c.classList.add('new'));
+  updateHud();
+  if (S.over) setTimeout(endGame, 500);
+}
+document.addEventListener('keydown', (ev) => {
+  if (!$('ovRules').classList.contains('hide') && (ev.key === 'Escape' || ev.key === 'Enter')){ closeRules(); return; }
+  if (!$('ovTitle').classList.contains('hide') || !$('ovResult').classList.contains('hide')){
+    if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); if (!$('ovResult').classList.contains('hide')) startGame(mode); else startGame('free'); }
+    return;
+  }
+  if (ev.key >= '1' && ev.key <= '4') selectKey(+ev.key - 1);
+  else if ((ev.key === 'Enter' || ev.key === ' ') && sel >= 0){ ev.preventDefault(); selectKey(sel); }
+  else if (ev.key === 's' || ev.key === 'S') doSwap();
+  else if (ev.key === 'Escape'){ sel = -1; renderHand(false); updateInfo(); }
+});
+
+// ---------- 進行 ----------
+function startGame(m){
+  AU.init();
+  mode = m;
+  const seed = m === 'daily' ? (todayKey()*2654435761)>>>0 : (Math.random()*4294967296)>>>0;
+  S = newGame(seed); S.lastNew = -1;
+  sel = -1; hover = -1; anim = null; particles = []; floats = []; startTime = Date.now();
+  AU.intensity = 1;
+  ['ovTitle','ovResult','ovRules'].forEach(id => $(id).classList.add('hide'));
+  layout(); renderHand(false); updateHud();
+  AU.SE.start();
+}
+function rankOf(sc){
+  if (sc >= 30000) return '偏角の支配者';
+  if (sc >= 22000) return '複素平面の船長';
+  if (sc >= 15000) return '一等航海士';
+  if (sc >= 8000) return '航海士';
+  if (sc >= 3000) return '見習い航海士';
+  return '原点付近を漂流中';
+}
+function endGame(){
+  const key = bestKey(), best = store.get(key, 0), isNew = S.score > best;
+  if (isNew) store.set(key, S.score);
+  const plays = store.get('rotai_plays', 0) + 1; store.set('rotai_plays', plays);
+  const hist = store.get('rotai_hist', []); hist.push(S.score); store.set('rotai_hist', hist.slice(-50));
+  $('resMode').textContent = mode === 'daily' ? `デイリー ${todayKey()} の結果` : 'フリープレイの結果';
+  $('resNew').textContent = isNew ? '★ 自己ベスト更新 ★' : '';
+  $('resScore').textContent = S.score.toLocaleString();
+  $('resRank').textContent = '称号：' + rankOf(S.score);
+  const mins = Math.max(1, Math.round((Date.now()-startTime)/1000));
+  $('resStats').innerHTML = `<div>到達レベル<b>${S.level}</b></div><div>回収した光点<b>${S.gemsTotal}</b></div>
+    <div>1手の最多回収<b>${S.maxSweep} 個</b></div><div>最長 CHAIN<b>${S.maxChain}</b></div>
+    <div>手数<b>${S.moves}</b></div><div>プレイ時間<b>${Math.floor(mins/60)}分${mins%60}秒</b></div>
+    <div style="grid-column:1/3">ベスト：<b style="display:inline">${Math.max(best, S.score).toLocaleString()}</b>${isNew && best ? `（前回 ${best.toLocaleString()}）` : ''}</div>`;
+  $('ovResult').classList.remove('hide');
+  AU.SE.over(); if (isNew) AU.SE.record();
+  AU.intensity = 1;
+}
+function refreshTitle(){
+  const bf = store.get('rotai_best_free', 0), bd = store.get('rotai_best_d' + todayKey(), 0), pl = store.get('rotai_plays', 0);
+  $('recTitle').innerHTML = `フリーのベスト <b>${bf.toLocaleString()}</b>　今日のデイリー <b>${bd.toLocaleString()}</b><br>プレイ回数 ${pl}`;
+}
+function syncToggles(){
+  ['tBgm','tBgm2'].forEach(id => $(id).classList.toggle('off', !AU.bgmOn));
+  ['tSe','tSe2'].forEach(id => $(id).classList.toggle('off', !AU.seOn));
+}
+['tBgm','tBgm2'].forEach(id => $(id).addEventListener('click', () => { AU.init(); AU.setBgm(!AU.bgmOn); syncToggles(); }));
+['tSe','tSe2'].forEach(id => $(id).addEventListener('click', () => { AU.init(); AU.setSe(!AU.seOn); syncToggles(); AU.SE.select('rot'); }));
+function openRules(){ $('ovRules').classList.remove('hide'); }
+function closeRules(){ $('ovRules').classList.add('hide'); }
+$('tHelp').addEventListener('click', openRules);
+$('bRules').addEventListener('click', () => { AU.init(); openRules(); });
+$('bRulesClose').addEventListener('click', closeRules);
+$('bFree').addEventListener('click', () => startGame('free'));
+$('bDaily').addEventListener('click', () => startGame('daily'));
+$('bAgain').addEventListener('click', () => startGame(mode));
+$('bToTitle').addEventListener('click', () => { $('ovResult').classList.add('hide'); refreshTitle(); $('ovTitle').classList.remove('hide'); });
+
+// タイトル背景用のデモ盤面
+S = newGame(12345); S.lastNew = -1;
+syncToggles(); refreshTitle(); layout(); renderHand(false); updateHud();
+requestAnimationFrame(draw);
+window.__rotai = { get S(){ return S; }, AU, startGame, evalMove, play };
+</script>
+</body>
+</html>
