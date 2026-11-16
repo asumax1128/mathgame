@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0d18">
+<title>MOD RING — 余りの環を、最短で跳べ。</title>
+<style>
+:root{
+  --bg:#0a0d18; --panel:#141a2e; --line:#27304d; --ink:#e8ecf8; --dim:#8b95b5;
+  --c0:#4de1ff; --c1:#ff6fb1; --c2:#ffc857; --good:#b9ffb0; --bad:#ff5a5a;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP","Segoe UI",system-ui,sans-serif;
+  overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+#hud{padding:8px 12px 4px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px}
+#hudL{font-size:12px;color:var(--dim);letter-spacing:.06em;line-height:1.35}
+#hudL b{display:block;color:var(--ink);font-size:17px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+#hudC{text-align:center}
+#hudC small{display:block;font-size:10px;color:var(--dim);letter-spacing:.2em}
+#score{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+#hudR{display:flex;justify-content:flex-end;gap:6px}
+.tg{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  font-size:11px;font-weight:700;letter-spacing:.02em;cursor:pointer;padding:0;font-family:inherit}
+.tg.off{color:#56607f;text-decoration:line-through;background:transparent}
+#timeWrap{margin:2px 12px 0;display:flex;align-items:center;gap:8px}
+#timeBar{flex:1;height:6px;border-radius:3px;background:#1b2238;overflow:hidden}
+#timeFill{height:100%;width:100%;background:linear-gradient(90deg,var(--c0),#8af0ff);border-radius:3px;transform-origin:left}
+#timeFill.low{background:linear-gradient(90deg,var(--bad),#ff9a7a)}
+#timeFill.hit{filter:brightness(2.2)}
+#timeNum{width:34px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;color:var(--dim)}
+#stage{flex:1;min-height:0;position:relative}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hint{height:22px;text-align:center;font-size:12px;color:var(--dim);padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pads{display:flex;gap:10px;padding:6px 12px 14px;height:118px}
+.pad{flex:1;border-radius:16px;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 13%,var(--panel));
+  color:var(--c);font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;transition:transform .06s,background .12s,opacity .2s;touch-action:none;padding:0}
+.pad b{font-size:36px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.pad i{font-style:normal;font-size:11px;color:var(--dim);letter-spacing:.08em}
+.pad.hit{transform:scale(.95);background:color-mix(in srgb,var(--c) 42%,var(--panel))}
+.pad:disabled{opacity:.45}
+@media (hover:none){.pad i{display:none}}
+.ov{position:fixed;left:0;right:0;bottom:0;top:calc(env(safe-area-inset-top) + 84px);display:none;align-items:center;justify-content:center;padding:16px;
+  background:rgba(8,10,20,.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:5;overflow:auto}
+.ov.on{display:flex}
+.card{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 20px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:100%;overflow:auto}
+.card h2{margin:0 0 4px;font-size:13px;color:var(--dim);letter-spacing:.2em;font-weight:600}
+.logo{font-size:44px;font-weight:900;letter-spacing:.04em;line-height:1;margin:0;
+  background:linear-gradient(100deg,var(--c0),var(--c1) 60%,var(--c2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tag{margin:8px 0 16px;color:var(--ink);font-size:15px}
+.unit{font-size:11px;color:var(--dim);margin-top:14px;line-height:1.6}
+.btn{display:block;width:100%;margin-top:10px;padding:14px 12px;border-radius:13px;border:1px solid var(--line);
+  background:#1c2440;color:var(--ink);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+.btn small{display:block;font-size:11px;font-weight:400;color:var(--dim);margin-top:2px}
+.btn.pri{background:linear-gradient(100deg,#2bb9e0,#4de1ff);color:#04202b;border:none}
+.btn.pri small{color:#0b4558}
+.btn:active{transform:scale(.98)}
+.row{display:flex;gap:10px}.row .btn{flex:1}
+.big{font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.rank{font-size:64px;font-weight:900;line-height:1;background:linear-gradient(120deg,var(--c2),var(--c1));-webkit-background-clip:text;background-clip:text;color:transparent}
+.memo{margin-top:14px;padding:12px 13px;border-radius:12px;background:#0f1426;border:1px solid var(--line);font-size:14px;line-height:1.7}
+.memo b{color:var(--c2);font-size:11px;letter-spacing:.18em;display:block;margin-bottom:2px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:12px;text-align:center}
+.stats div{background:#0f1426;border-radius:10px;padding:8px 2px;font-size:10px;color:var(--dim)}
+.stats b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+.rings{margin-top:10px;font-size:12px;color:var(--dim)}
+.rings div{display:flex;justify-content:space-between;padding:3px 2px;border-bottom:1px dashed #222a45;font-variant-numeric:tabular-nums}
+.rings span:last-child{color:var(--ink)}
+.how{margin:6px 0 0;padding:0;list-style:none;font-size:13.5px;line-height:1.55}
+.how li{padding:6px 0 6px 30px;position:relative;border-bottom:1px dashed #222a45}
+.how li:last-child{border:none}
+.how li::before{content:attr(data-n);position:absolute;left:0;top:8px;width:21px;height:21px;border-radius:50%;
+  background:#243056;color:var(--c0);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.k0{color:var(--c0);font-weight:700}.k1{color:var(--c1);font-weight:700}.k2{color:var(--c2);font-weight:700}.kg{color:var(--good);font-weight:700}.kb{color:var(--bad);font-weight:700}
+.best{font-size:12px;color:var(--dim);margin-top:12px;display:flex;justify-content:space-between}
+.best b{color:var(--ink);font-variant-numeric:tabular-nums}
+.new{color:var(--c2);font-weight:800;letter-spacing:.1em;font-size:13px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div id="hudL"><span id="ringNo">RING –/6</span><b id="modLbl">mod 12</b></div>
+    <div id="hudC"><small>SCORE</small><div id="score">0</div></div>
+    <div id="hudR">
+      <button class="tg" id="tgM" aria-label="BGMの切り替え">BGM</button>
+      <button class="tg" id="tgS" aria-label="効果音の切り替え">SE</button>
+      <button class="tg" id="tgP" aria-label="一時停止">II</button>
+    </div>
+  </div>
+  <div id="timeWrap"><div id="timeBar"><div id="timeFill"></div></div><div id="timeNum">45</div></div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+
+    <div class="ov on" id="ovTitle"><div class="card">
+      <h2>MATH A ／ 整数の性質</h2>
+      <p class="logo">MOD RING</p>
+      <p class="tag">余りの環を、最短で跳べ。</p>
+      <button class="btn pri" id="btStart">スタート<small>6リング・約6分／毎回ちがう配列</small></button>
+      <button class="btn" id="btDaily">今日の配列<small id="dailyLbl">全員共通の日替わり配列で記録を競う</small></button>
+      <button class="btn" id="btHow">あそびかた</button>
+      <div class="best"><span>ベスト <b id="bestN">–</b></span><span>今日の配列 <b id="bestD">–</b></span></div>
+      <p class="unit">核になる数学：合同式（余りの世界）・最大公約数・一次不定方程式<br>対象：スマホ縦持ち（PCはキーボード ← ↓ → ／ A S D でも可）</p>
+    </div></div>
+
+    <div class="ov" id="ovHow"><div class="card">
+      <h2>あそびかた</h2>
+      <ul class="how">
+        <li data-n="1">下のボタンを押すと、光が<b>歩幅のぶんだけ</b>環を跳ぶ。<span class="k0">+4</span> なら4つ先へ。1周を超えたら「余り」の位置に着く。</li>
+        <li data-n="2"><span class="kg">◆</span> に止まると得点。環の上の色つきの印は、各ボタンの<b>次の着地点</b>。</li>
+        <li data-n="3"><span class="kg">◆</span> の数字は「<b>最短で取るための残り手数</b>」。1手ごとに減り、0になる前に取れば <span class="k2">最短</span>。連続で決めるほど倍率が ×2, ×3 … ×8 と上がる。</li>
+        <li data-n="4">最短手数を超えると倍率は ×1 に戻る。<span class="kb">✕</span>（ノイズ）を踏むと −3秒＋倍率リセット。点線の <span class="kg">◇</span> は次に出る場所の予告。先まで読んでおける。</li>
+        <li data-n="5">1リング45秒 × 6リング。リングごとに<b>点の数（mod）と歩幅</b>が変わる。構造を見抜くほど速くなる。</li>
+      </ul>
+      <button class="btn pri" id="btHowOk">OK</button>
+    </div></div>
+
+    <div class="ov" id="ovInter"><div class="card">
+      <h2 id="inTitle">RING 1 / 6 終了</h2>
+      <div class="big" id="inScore">+0</div>
+      <div class="best" style="margin-top:2px"><span>合計 <b id="inTotal">0</b></span><span id="inSub"></span></div>
+      <div class="memo"><b>このリングの数学</b><span id="inMemo"></span></div>
+      <button class="btn pri" id="btNext">次のリングへ</button>
+    </div></div>
+
+    <div class="ov" id="ovResult"><div class="card">
+      <h2 id="reMode">RESULT</h2>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+        <div><div class="big" id="reScore">0</div><div id="reNew" class="new"></div></div>
+        <div class="rank" id="reRank">A</div>
+      </div>
+      <div class="stats">
+        <div><b id="stGot">0</b>取った◆</div><div><b id="stRate">0%</b>最短率</div>
+        <div><b id="stCombo">0</b>最大連続</div><div><b id="stMine">0</b>ノイズ</div>
+      </div>
+      <div class="rings" id="reRings"></div>
+      <div class="best"><span>ベスト <b id="reBest">–</b></span><span id="reNext"></span></div>
+      <button class="btn pri" id="btRetry">もう1回</button>
+      <button class="btn" id="btTitle">タイトルへ</button>
+    </div></div>
+
+    <div class="ov" id="ovPause"><div class="card">
+      <h2>PAUSE</h2>
+      <p class="tag">一時停止中</p>
+      <button class="btn pri" id="btResume">再開</button>
+      <button class="btn" id="btQuit">やめてタイトルへ</button>
+    </div></div>
+  </div>
+  <div id="hint"></div>
+  <div id="pads"></div>
+</div>
+
+<script>
+"use strict";
+/*CORE-BEGIN*/
+// ===== ゲームの論理（DOM・音に依存しない） =====
+const STAGE_TIME=45, MINE_PENALTY=3, MULT_CAP=8, STAGES=6;
+// 各段階のリング候補。n=点の数（法）、steps=歩幅、mines=ノイズ数、targets=同時に出る◆の数
+const POOLS=[
+ [ {n:12,steps:[1,4],memo:"+4 を3回押すと元の点に戻る。+4 だけで踏めるのは 12÷gcd(12,4)=3 点だけ。残りの点へは +1 でずらす。"},
+   {n:12,steps:[1,5],memo:"+5 を5回で +25 ≡ +1 (mod 12)。gcd(12,5)=1 だから、+5 だけでも12点すべてを回れる。"},
+   {n:10,steps:[1,3],memo:"+3 を7回で +21 ≡ +1 (mod 10)。gcd(10,3)=1 なので +3 だけで全点を回れる。+1 と +3、どちらが近道かは距離しだい。"} ],
+ [ {n:12,steps:[3,4],memo:"+3 は「3で割った余り」を変えず、+4 は「4で割った余り」を変えない。2種類の余りを別々に合わせれば、それが最短になる（12=3×4）。"},
+   {n:10,steps:[2,5],memo:"+2 は偶奇を変えない。偶奇を変えられるのは +5 だけで、+5 は2回で元に戻る。10=2×5 の構造がそのまま操作になっている。"},
+   {n:15,steps:[3,5],memo:"+3 は「3で割った余り」を保ち、+5 は「5で割った余り」を保つ。15=3×5。2つの余りの組で15点がすべて区別できる。"},
+   {n:14,steps:[2,7],memo:"+7 は2回で元に戻る（偶奇のスイッチ）。+2 は同じ偶奇の7点を巡る。14=2×7。"} ],
+ [ {n:12,steps:[5,-2],mines:1,memo:"+5−2−2 = +1。「5x−2y ≡ 目標 (mod 12)」の解のうち、x+y が最小のものが最短ルート。"},
+   {n:11,steps:[2,-3],mines:1,memo:"+2−3 = −1、+2+2−3 = +1。11 は素数なので、どちらのボタン1つでも全点を回れる。"},
+   {n:10,steps:[3,-2],mines:1,memo:"+3−2 = +1。+3+3 = +6 ≡ −4 (mod 10)。大きく跳んで戻る方が速いことがある。"},
+   {n:9,steps:[2,-3],mines:1,memo:"−3 は3回で1周（9÷gcd(9,3)=3）。+2 は gcd(9,2)=1 なので全点を回れる。"} ],
+ [ {n:13,steps:[2,5],mines:1,memo:"13 は素数。どの歩幅も 13 と互いに素だから、1つのボタンを押し続けるだけで全13点を踏める。"},
+   {n:11,steps:[3,4],mines:1,memo:"+3+4+4 = 11 ≡ 0。3手で元の点に戻る輪がある。11 は素数なので行き止まりの組はない。"},
+   {n:13,steps:[3,-4],mines:1,memo:"+3 を3回で +9 ≡ −4 (mod 13)。つまり −4 は「+3 を3回」の近道になっている。"} ],
+ [ {n:16,steps:[3,5,-2],mines:2,memo:"3x+5y−2z ≡ 目標 (mod 16)。解は無数にある。その中で x+y+z が最小のものを瞬時に選べるか。"},
+   {n:18,steps:[4,5,-3],mines:2,memo:"+4 と −3 で +1、+5 と −3 で +2。+4 だけでは偶奇が変わらない（gcd(18,4)=2）。"},
+   {n:15,steps:[2,6,-5],mines:2,memo:"+6 と −5 で +1。−5 は3回で1周（15÷gcd(15,5)=3）、+6 は5回で1周（15÷gcd(15,6)=5）。"},
+   {n:16,steps:[1,4,-6],mines:2,memo:"+4 は4回で1周。−6 は gcd(16,6)=2 なので偶奇を変えられない。偶奇を変えるのは +1 だけ。"} ],
+ [ {n:12,steps:[5,-5],mines:1,memo:"±5 だけで12点すべてに届くのは gcd(12,5)=1 だから。音楽の「五度圏」と同じ並べ替えになっている。"},
+   {n:16,steps:[3,-5],mines:2,memo:"+3 を5回で +15 ≡ −1 (mod 16)。−5 を3回でも −15 ≡ +1。逆向きに1つ進むだけでも手数がかかる。"},
+   {n:14,steps:[3,-5],mines:2,memo:"+3+3 = +6、+3−5 = −2、−5−5 = −10 ≡ +4。2手で動ける量を覚えると、4手先まで読める。"},
+   {n:15,steps:[4,-7],mines:2,memo:"+4 を2回で +8 ≡ −7 (mod 15)。+4 と −7 で −3、+4 が4回で +1。"} ]
+];
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function mod(a,n){return((a%n)+n)%n}
+// 幅優先探索：from から各点までの最短手数（blocked は踏まない）
+function bfs(n,steps,from,blocked){
+  const d=new Array(n).fill(Infinity);d[from]=0;const q=[from];
+  for(let h=0;h<q.length;h++){const c=q[h];for(const s of steps){const t=mod(c+s,n);
+    if(d[t]===Infinity&&!(blocked&&blocked[t])){d[t]=d[c]+1;q.push(t)}}}
+  return d;
+}
+function stronglyConnected(n,steps,blocked){
+  for(let a=0;a<n;a++){if(blocked[a])continue;const d=bfs(n,steps,a,blocked);
+    for(let b=0;b<n;b++)if(!blocked[b]&&d[b]===Infinity)return false}
+  return true;
+}
+class Core{
+  constructor(seed,emit){
+    this.rnd=mulberry32(seed);this.emit=emit||function(){};
+    this.plan=POOLS.map(p=>p[Math.floor(this.rnd()*p.length)]);
+    this.score=0;this.combo=0;this.maxCombo=0;this.collected=0;this.shortest=0;this.mineHits=0;this.hops=0;
+    this.stageScores=[];this.si=-1;this.active=false;
+  }
+  ri(k){return Math.floor(this.rnd()*k)}
+  mult(){return Math.min(1+this.combo,MULT_CAP)}
+  startStage(i){
+    const c=this.plan[i];this.si=i;this.cfg=c;this.n=c.n;this.steps=c.steps;
+    this.pos=this.ri(c.n);this.mines=new Array(c.n).fill(false);this.placeMines(c.mines||0);
+    this.targets=[];this.timeLeft=STAGE_TIME;this.stageScore=0;this.active=false;
+    const first=this.pickFrom(this.pos,-1);this.targets=[{cell:first.cell,par:first.par,used:0}];this.emit('spawn',this.targets[0]);
+    this.next=this.pickFrom(first.cell,-1);
+  }
+  placeMines(k){
+    for(let m=k;m>0;m--){
+      for(let tr=0;tr<80;tr++){
+        const b=new Array(this.n).fill(false);let cnt=0,guard=0;
+        while(cnt<m&&guard++<200){const c=this.ri(this.n);
+          // 開始点と、開始点から1手の点には置かない
+          if(c===this.pos||b[c]||this.steps.some(s=>mod(this.pos+s,this.n)===c))continue;b[c]=true;cnt++}
+        if(cnt===m&&stronglyConnected(this.n,this.steps,b)){this.mines=b;return}
+      }
+    }
+  }
+  // origin から見て「最短3手以上」を優先して次の◆の場所を選ぶ（avoid には置かない）
+  pickFrom(origin,avoid){
+    const d=bfs(this.n,this.steps,origin,this.mines);const cand=[];let tot=0;
+    const W=[0,0.01,0.12,4,3.5,2,1,0.5];
+    for(let c=0;c<this.n;c++){
+      if(c===origin||c===avoid||this.mines[c]||d[c]===Infinity)continue;
+      const w=d[c]<W.length?W[d[c]]:0.3;cand.push([c,w]);tot+=w;
+    }
+    let r=this.rnd()*tot,pick=cand[cand.length-1][0];
+    for(const[c,w]of cand){r-=w;if(r<=0){pick=c;break}}
+    return {cell:pick,par:d[pick]};
+  }
+  hop(b){
+    if(!this.active||b<0||b>=this.steps.length)return null;
+    const from=this.pos,to=mod(from+this.steps[b],this.n);
+    this.pos=to;this.hops++;const res={from,to,b};
+    for(const t of this.targets){t.used++;if(t.used===t.par+1&&t.cell!==to){this.combo=0;res.blown=true;this.emit('blown',t)}}
+    if(this.mines[to]){this.timeLeft-=MINE_PENALTY;this.combo=0;this.mineHits++;res.mine=true}
+    const ti=this.targets.findIndex(t=>t.cell===to);
+    if(ti>=0){
+      const t=this.targets[ti];this.targets.splice(ti,1);
+      const short=t.used<=t.par;
+      if(short){this.combo++;this.shortest++;if(this.combo>this.maxCombo)this.maxCombo=this.combo}else this.combo=0;
+      const mult=short?this.mult():1;const pts=(100+20*t.par)*mult;
+      this.score+=pts;this.stageScore+=pts;this.collected++;
+      res.collect={pts,short,mult,par:t.par,combo:this.combo};
+      // 予告されていた◇が次の◆になる（最短手数は、いま取った点から数える）
+      const nt={cell:this.next.cell,par:this.next.par,used:0};this.targets=[nt];this.emit('spawn',nt);
+      this.next=this.pickFrom(nt.cell,-1);
+    }
+    this.emit('hop',res);return res;
+  }
+  tick(dt){
+    if(!this.active)return;
+    this.timeLeft-=dt;
+    if(this.timeLeft<=0){this.timeLeft=0;this.active=false;this.stageScores.push(this.stageScore);this.emit('stageEnd')}
+  }
+}
+const RANKS=[[150000,'S'],[100000,'A'],[60000,'B'],[30000,'C'],[0,'D']];
+function rankOf(s){for(const[r,l]of RANKS)if(s>=r)return l;return 'D'}
+/*CORE-END*/
+
+// ===== 音（Web Audio API で全て生成） =====
+const PENTA=[0,3,5,7,10];                 // マイナー・ペンタトニック。効果音もBGMもこの音階の上に置く
+const ROOTS=[50,53,48,55,52,50];          // リングごとに主音を変える（D,F,C,G,E,D）
+const BPM=96;
+const AU={ctx:null,music:true,sfx:true,root:50,base:50,mode:'calm',level:0,step:0,next:0};
+const BGM_VOL=0.5, SE_VOL=0.8;
+function mtof(m){return 440*Math.pow(2,(m-69)/12)}
+function audioInit(){
+  if(AU.ctx){if(AU.ctx.state==='suspended'&&!document.hidden)AU.ctx.resume();return}
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  const ctx=AU.ctx=new C();
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.connect(ctx.destination);
+  AU.master=ctx.createGain();AU.master.gain.value=1.5;AU.master.connect(comp);
+  AU.bgm=ctx.createGain();AU.bgm.gain.value=AU.music?BGM_VOL:0;AU.bgm.connect(AU.master);
+  AU.se=ctx.createGain();AU.se.gain.value=AU.sfx?SE_VOL:0;AU.se.connect(AU.master);
+  // 付点8分のディレイ（BGMのアルペジオと効果音で共有して、同じ空間に置く）
+  const dl=ctx.createDelay(1);dl.delayTime.value=60/BPM*0.75;const fb=ctx.createGain();fb.gain.value=0.3;
+  const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2600;
+  dl.connect(lp);lp.connect(fb);fb.connect(dl);const wet=ctx.createGain();wet.gain.value=0.22;lp.connect(wet);wet.connect(AU.master);
+  AU.seSend=ctx.createGain();AU.seSend.gain.value=1;AU.se.connect(AU.seSend);AU.seSend.connect(dl);
+  AU.bgmSend=ctx.createGain();AU.bgmSend.gain.value=1;AU.bgmSend.connect(dl);
+  const nb=ctx.createBuffer(1,ctx.sampleRate*0.5,ctx.sampleRate);const ch=nb.getChannelData(0);
+  for(let i=0;i<ch.length;i++)ch[i]=Math.random()*2-1;AU.noise=nb;
+  AU.next=ctx.currentTime+0.1;
+  if(ctx.state==='suspended'&&!document.hidden)ctx.resume();
+}
+function tone(dest,midi,t,dur,type,vol,att,slideTo){
+  const ctx=AU.ctx,o=ctx.createOscillator(),g=ctx.createGain();o.type=type;
+  o.frequency.setValueAtTime(mtof(midi),t);if(slideTo!=null)o.frequency.exponentialRampToValueAtTime(mtof(slideTo),t+dur);
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+(att||0.005));
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(dest);o.start(t);o.stop(t+dur+0.05);return g;
+}
+function noiseHit(dest,t,dur,vol,freq,type){
+  const ctx=AU.ctx,s=ctx.createBufferSource();s.buffer=AU.noise;const f=ctx.createBiquadFilter();f.type=type||'highpass';f.frequency.value=freq;
+  const g=ctx.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f);f.connect(g);g.connect(dest);s.start(t);s.stop(t+dur+0.02);
+}
+function seOK(){return AU.ctx&&AU.sfx&&AU.ctx.state==='running'}
+function nodeMidi(i){return AU.base+PENTA[i%5]+12*Math.floor(i/5)}
+const SE={
+  hop(cell){if(!seOK())return;const t=AU.ctx.currentTime,m=nodeMidi(cell);
+    tone(AU.se,m,t,0.26,'triangle',0.2);tone(AU.se,m+12,t,0.12,'sine',0.05)},
+  collect(cell,short,combo){if(!seOK())return;const t=AU.ctx.currentTime,m=nodeMidi(cell);
+    tone(AU.se,m+12,t,0.34,'sine',0.2);tone(AU.se,m+19,t+0.07,0.34,'sine',0.16);
+    if(short){tone(AU.se,m+24,t+0.14,0.42,'sine',0.15);tone(AU.se,m+24,t+0.14,0.2,'triangle',0.05);
+      // 連続するほど上に音が足されていく
+      const extra=Math.min(combo-1,4);for(let k=0;k<extra;k++){const d=PENTA[(k+1)%5]+12*Math.floor((k+1)/5);
+        tone(AU.se,AU.root+36+d,t+0.21+k*0.06,0.3,'sine',0.09)}}},
+  mine(){if(!seOK())return;const t=AU.ctx.currentTime;
+    tone(AU.se,AU.root-2,t,0.38,'sawtooth',0.16,0.004,AU.root-14);tone(AU.se,AU.root-1,t,0.3,'square',0.06,0.004,AU.root-13);
+    noiseHit(AU.se,t,0.16,0.22,900,'lowpass')},
+  blown(){if(!seOK())return;const t=AU.ctx.currentTime;tone(AU.se,AU.root+12,t,0.09,'triangle',0.07,0.003,AU.root+7)},
+  count(go){if(!seOK())return;const t=AU.ctx.currentTime;
+    if(go){tone(AU.se,AU.root+24,t,0.5,'sine',0.2);tone(AU.se,AU.root+31,t,0.5,'sine',0.1)}else tone(AU.se,AU.root+19,t,0.14,'sine',0.16)},
+  warn(){if(!seOK())return;tone(AU.se,AU.root+31,AU.ctx.currentTime,0.07,'sine',0.09)},
+  stageEnd(){if(!seOK())return;const t=AU.ctx.currentTime;[0,3,5,7,10,12].forEach((d,k)=>tone(AU.se,AU.root+24+d,t+k*0.07,0.4,'sine',0.13));
+    tone(AU.se,AU.root+12,t+0.42,0.9,'triangle',0.12)},
+  record(){if(!seOK())return;const t=AU.ctx.currentTime;[0,7,12,15,19,24].forEach((d,k)=>tone(AU.se,AU.root+24+d,t+k*0.09,0.6,'sine',0.14));
+    [0,7,15].forEach(d=>tone(AU.se,AU.root+24+d,t+0.6,1.2,'triangle',0.08))},
+  click(){if(!seOK())return;tone(AU.se,AU.root+36,AU.ctx.currentTime,0.06,'sine',0.08)}
+};
+// BGM：i–VI–III–VII の4小節 ×2（後半でベースが少し動く）。倍率が上がるとハット→アルペジオと層が増える
+const PROG=[{b:0,pad:[0,7,15],arp:[0,7,3,10,7,12,10,7]},{b:-4,pad:[-4,3,8],arp:[3,7,12,7,3,0,3,7]},
+            {b:3,pad:[3,10,15],arp:[3,7,10,15,10,7,3,7]},{b:-2,pad:[-2,5,10],arp:[5,10,12,17,12,10,5,10]}];
+const ARP_MASK=[1,0,1,1,0,1,1,0];
+function schedStep(s,t){
+  const bar=Math.floor(s/16)%8,st=s%16,ch=PROG[bar%4],r=AU.root,play=AU.mode==='play',lv=play?AU.level:0;
+  if(st===0){const f=AU.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=1100;f.connect(AU.bgm);
+    for(const p of ch.pad){const g=tone(f,r+12+p,t,2.7,'triangle',0.06,0.7);void g}
+    tone(f,r+ch.b,t,2.7,'sine',0.07,0.5)}
+  if(play){
+    if(st===0||st===6||st===10||(bar>=4&&st===14))tone(AU.bgm,r-12+ch.b+(st===14?7:0),t,0.3,'sine',0.2,0.01);
+    if(st===0||st===8)tone(AU.bgm,r-2,t,0.14,'sine',0.2,0.003,r-26);
+    if(lv>=1&&(st%4===2||(lv>=3&&st%2===0)))noiseHit(AU.bgm,t,0.04,st%4===2?0.05:0.025,7000);
+  }
+  const arpOn=play?lv>=2:true;
+  if(arpOn&&st%2===0&&ARP_MASK[(st/2+bar)%8]){
+    const n=r+24+ch.arp[(st/2+bar*3)%8];const g=tone(AU.bgm,n,t,0.22,'triangle',play?0.05:0.04,0.006);g.connect(AU.bgmSend)}
+}
+function bgmTick(){
+  const ctx=AU.ctx;if(!ctx||ctx.state!=='running')return;
+  if(AU.next<ctx.currentTime)AU.next=ctx.currentTime+0.06;
+  const stepDur=60/BPM/4;
+  while(AU.next<ctx.currentTime+0.18){if(AU.music)schedStep(AU.step,AU.next);AU.next+=stepDur;AU.step=(AU.step+1)%128}
+}
+setInterval(bgmTick,40);
+function setMusic(on){AU.music=on;if(AU.ctx)AU.bgm.gain.setTargetAtTime(on?BGM_VOL:0,AU.ctx.currentTime,0.05);saveSet()}
+function setSfx(on){AU.sfx=on;if(AU.ctx)AU.se.gain.setTargetAtTime(on?SE_VOL:0,AU.ctx.currentTime,0.02);saveSet()}
+
+// ===== 画面と進行 =====
+const $=id=>document.getElementById(id);
+const COL=['#4de1ff','#ff6fb1','#ffc857'];
+const cv=$('cv'),cx2=cv.getContext('2d');
+const G={state:'title',core:null,mode:'random',seed:0,countT:0,lastCount:4,prevState:null,
+  W:0,H:0,cx:0,cy:0,R:0,dpr:1,px:0,py:0,ax:0,ay:0,at:1,
+  trails:[],parts:[],floats:[],waves:[],shake:0,flash:0,warned:99,
+  demo:{n:12,steps:[5],pos:0,mines:[],targets:[],t:0}};
+window.__mr=G;
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+function saveSet(){ls('mr_set',JSON.stringify({m:AU.music,s:AU.sfx}))}
+try{const s=JSON.parse(ls('mr_set')||'{}');if(s.m===false)AU.music=false;if(s.s===false)AU.sfx=false}catch(e){}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function fmt(n){return Math.round(n).toLocaleString('ja-JP')}
+function stepLbl(s){return (s>0?'+':'−')+Math.abs(s)}
+function show(id){for(const o of document.querySelectorAll('.ov'))o.classList.toggle('on',o.id===id)}
+function refreshToggles(){$('tgM').classList.toggle('off',!AU.music);$('tgS').classList.toggle('off',!AU.sfx)}
+function refreshBest(){
+  const b=ls('mr_best'),d=ls('mr_daily_'+today());
+  $('bestN').textContent=b?fmt(+b):'–';$('bestD').textContent=d?fmt(+d):'–';
+  $('dailyLbl').textContent=today()+'／全員共通の日替わり配列で記録を競う';
+}
+function view(){return (G.core&&G.state!=='title')?G.core:G.demo}
+
+function resize(){
+  const r=cv.getBoundingClientRect();G.dpr=Math.min(window.devicePixelRatio||1,2.5);
+  G.W=r.width;G.H=r.height;cv.width=Math.round(r.width*G.dpr);cv.height=Math.round(r.height*G.dpr);
+  G.cx=G.W/2;G.cy=G.H/2;G.R=Math.max(60,Math.min(G.W,G.H)/2-34);
+  const v=view();const p=nodeXY(v.pos,v.n);G.px=G.ax=p[0];G.py=G.ay=p[1];G.at=1;
+}
+window.addEventListener('resize',resize);
+function nodeXY(i,n,r){const a=-Math.PI/2+i*2*Math.PI/n;r=r==null?G.R:r;return[G.cx+Math.cos(a)*r,G.cy+Math.sin(a)*r]}
+
+function buildPads(){
+  const c=G.core,el=$('pads');el.innerHTML='';
+  const hints=c.steps.length===2?['← / A','→ / D']:['← / A','↓ / S','→ / D'];
+  c.steps.forEach((s,i)=>{
+    const b=document.createElement('button');b.className='pad';b.style.setProperty('--c',COL[i]);b.dataset.b=i;
+    b.innerHTML='<b>'+stepLbl(s)+'</b><i>'+hints[i]+'</i>';
+    b.addEventListener('pointerdown',e=>{e.preventDefault();press(i)});
+    el.appendChild(b);
+  });
+}
+function press(i){
+  audioInit();
+  if(G.state!=='play'||!G.core)return;
+  const pads=$('pads').children;if(!pads[i])return;
+  pads[i].classList.add('hit');setTimeout(()=>pads[i]&&pads[i].classList.remove('hit'),90);
+  G.core.hop(i);
+}
+function startRun(mode){
+  audioInit();SE.click();
+  G.mode=mode;G.seed=mode==='daily'?hash('modring-'+today()):(Math.random()*4294967296)>>>0;
+  G.core=new Core(G.seed,onEvent);
+  $('score').textContent='0';
+  beginStage(0);
+}
+function beginStage(i){
+  const c=G.core;c.startStage(i);
+  G.trails=[];G.parts=[];G.floats=[];G.waves=[];G.warned=99;
+  AU.root=ROOTS[i%ROOTS.length];AU.base=AU.root+(c.n<=10?12:0);AU.mode='play';AU.level=levelOf(c.combo);
+  if(AU.ctx){AU.step=0;AU.next=AU.ctx.currentTime+0.08}
+  const p=nodeXY(c.pos,c.n);G.px=G.ax=p[0];G.py=G.ay=p[1];G.at=1;
+  const now=performance.now();for(const t of c.targets)t.born=now;
+  $('ringNo').textContent='RING '+(i+1)+'/'+STAGES;$('modLbl').textContent='mod '+c.n;
+  buildPads();for(const b of $('pads').children)b.disabled=true;
+  $('hint').textContent=i===0?'◆ の数字 ＝「最短で取るための残り手数」':'着地点 ＝（いまの位置 ＋ 歩幅）を '+c.n+' で割った余り';
+  G.state='count';G.countT=3;G.lastCount=4;show(null);updateHud();
+}
+function levelOf(combo){return combo>=7?3:combo>=4?2:combo>=2?1:0}
+function onEvent(type,d){
+  const c=G.core;
+  if(type==='spawn'){d.born=performance.now()}
+  else if(type==='blown'){SE.blown();const p=nodeXY(d.cell,c.n);addFloat(p,'最短ならず','#8b95b5')}
+  else if(type==='hop'){
+    const a=nodeXY(d.from,c.n),b=nodeXY(d.to,c.n);
+    G.trails.push({a,b,col:COL[d.b],age:0});if(G.trails.length>14)G.trails.shift();
+    G.ax=G.px;G.ay=G.py;G.at=0;
+    if(d.mine){SE.mine();G.shake=0.3;G.flash=0.35;if(navigator.vibrate)try{navigator.vibrate(40)}catch(e){}
+      addFloat(b,'−'+MINE_PENALTY+'秒','#ff5a5a');const tf=$('timeFill');tf.classList.add('hit');setTimeout(()=>tf.classList.remove('hit'),160)}
+    if(d.collect){
+      const k=d.collect;SE.collect(d.to,k.short,k.combo);
+      burst(b,k.short?'#ffe08a':'#b9ffb0',k.short?16:8);
+      if(k.short)G.waves.push({x:b[0],y:b[1],age:0});
+      addFloat(b,'+'+fmt(k.pts)+(k.short?'  最短 ×'+k.mult:''),k.short?'#ffd66b':'#cfe9d0');
+      $('score').textContent=fmt(c.score);
+    }else if(!d.mine)SE.hop(d.to);
+    AU.level=levelOf(c.combo);
+  }
+  else if(type==='stageEnd'){endStage()}
+}
+function addFloat(p,text,col){
+  const dx=G.cx-p[0],dy=G.cy-p[1],L=Math.hypot(dx,dy)||1;
+  G.floats.push({x:p[0]+dx/L*74,y:p[1]+dy/L*40,text,col,age:0});
+}
+function burst(p,col,n){for(let i=0;i<n;i++){const a=Math.random()*6.283,s=40+Math.random()*130;
+  G.parts.push({x:p[0],y:p[1],vx:Math.cos(a)*s,vy:Math.sin(a)*s,age:0,life:0.45+Math.random()*0.3,col})}}
+function endStage(){
+  const c=G.core,i=c.si,last=i===STAGES-1;
+  G.state='inter';AU.mode='calm';SE.stageEnd();
+  for(const b of $('pads').children)b.disabled=true;
+  $('inTitle').textContent='RING '+(i+1)+' / '+STAGES+' 終了　mod '+c.n+'［'+c.steps.map(stepLbl).join(' , ')+'］';
+  $('inScore').textContent='+'+fmt(c.stageScore);$('inTotal').textContent=fmt(c.score);
+  $('inSub').textContent=c.combo>0?'最短 '+c.combo+' 連続中（次へ持ち越し）':'';
+  $('inMemo').textContent=c.cfg.memo;
+  $('btNext').textContent=last?'結果を見る':'次のリングへ';
+  setTimeout(()=>{if(G.state==='inter')show('ovInter')},500);
+}
+function nextFromInter(){
+  if(G.state!=='inter')return;audioInit();SE.click();
+  if(G.core.si===STAGES-1)showResult();else beginStage(G.core.si+1);
+}
+function showResult(){
+  const c=G.core;G.state='result';
+  const key=G.mode==='daily'?'mr_daily_'+today():'mr_best';const prev=+(ls(key)||0);const isNew=c.score>prev;
+  if(isNew)ls(key,String(c.score));
+  $('reMode').textContent=G.mode==='daily'?'RESULT ／ 今日の配列 '+today():'RESULT';
+  $('reScore').textContent=fmt(c.score);$('reRank').textContent=rankOf(c.score);
+  $('reNew').textContent=isNew&&prev>0?'NEW RECORD':isNew?'FIRST RECORD':'';
+  $('stGot').textContent=c.collected;$('stRate').textContent=(c.collected?Math.round(c.shortest/c.collected*100):0)+'%';
+  $('stCombo').textContent=c.maxCombo;$('stMine').textContent=c.mineHits;
+  $('reRings').innerHTML=c.plan.map((p,i)=>'<div><span>'+(i+1)+'. mod '+p.n+'［'+p.steps.map(stepLbl).join(' , ')+'］</span><span>'+fmt(c.stageScores[i]||0)+'</span></div>').join('');
+  $('reBest').textContent=fmt(Math.max(prev,c.score));
+  const nx=RANKS.slice().reverse().find(r=>r[0]>c.score);
+  $('reNext').textContent=nx?'ランク'+nx[1]+'まで あと '+fmt(nx[0]-c.score):'最高ランク到達';
+  show('ovResult');refreshBest();
+  if(isNew)SE.record();
+}
+function toTitle(){G.state='title';G.core=null;AU.mode='calm';$('pads').innerHTML='';$('hint').textContent='';
+  $('ringNo').textContent='RING –/6';$('modLbl').textContent='mod 12';$('score').textContent='0';
+  G.trails=[];G.floats=[];G.parts=[];G.waves=[];show('ovTitle');refreshBest();resize();updateHud()}
+function pause(){if(G.state!=='play'&&G.state!=='count')return;G.prevState=G.state;G.state='pause';show('ovPause')}
+function resume(){if(G.state!=='pause')return;audioInit();G.state=G.prevState;show(null);last=performance.now()}
+
+function updateHud(){
+  const c=G.core,t=c&&G.state!=='title'?c.timeLeft:STAGE_TIME;
+  const f=$('timeFill');f.style.transform='scaleX('+Math.max(0,t/STAGE_TIME)+')';f.classList.toggle('low',t<=10);
+  $('timeNum').textContent=Math.ceil(t);
+}
+
+// ----- 描画 -----
+function draw(dt,now){
+  const c=cx2,v=view(),n=v.n,W=G.W,H=G.H;
+  c.setTransform(G.dpr,0,0,G.dpr,0,0);c.clearRect(0,0,W,H);
+  if(G.shake>0){c.translate((Math.random()-.5)*14*G.shake,(Math.random()-.5)*14*G.shake)}
+  // 環
+  c.lineWidth=1.5;c.strokeStyle='rgba(140,155,200,.22)';c.beginPath();c.arc(G.cx,G.cy,G.R,0,6.2832);c.stroke();
+  // 軌跡（跳んだ弦が星形多角形を描く）
+  c.lineCap='round';
+  for(const t of G.trails){const a=Math.max(0,1-t.age/1.8);c.globalAlpha=a*0.55;c.strokeStyle=t.col;c.lineWidth=2;
+    c.beginPath();c.moveTo(t.a[0],t.a[1]);c.lineTo(t.b[0],t.b[1]);c.stroke()}
+  c.globalAlpha=1;
+  const playing=G.state==='play'||G.state==='count'||G.state==='pause';
+  // 次の着地点（各ボタンの色）
+  if(playing&&G.core){
+    const from=nodeXY(v.pos,n);
+    v.steps.forEach((s,i)=>{const cell=mod(v.pos+s,n),p=nodeXY(cell,n);
+      c.strokeStyle=COL[i];c.globalAlpha=.2;c.lineWidth=1.5;c.setLineDash([4,6]);c.beginPath();c.moveTo(from[0],from[1]);c.lineTo(p[0],p[1]);c.stroke();c.setLineDash([]);
+      c.globalAlpha=.95;c.lineWidth=3;c.beginPath();c.arc(p[0],p[1],15,0,6.2832);c.stroke();c.globalAlpha=1});
+  }
+  // 点と番号
+  const fs=n>14?11:13;c.font='600 '+fs+'px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';
+  for(let i=0;i<n;i++){const p=nodeXY(i,n),q=nodeXY(i,n,G.R+20);
+    if(v.mines[i]){c.strokeStyle='#ff5a5a';c.lineWidth=3;c.shadowColor='#ff5a5a';c.shadowBlur=10;
+      c.beginPath();c.moveTo(p[0]-7,p[1]-7);c.lineTo(p[0]+7,p[1]+7);c.moveTo(p[0]+7,p[1]-7);c.lineTo(p[0]-7,p[1]+7);c.stroke();c.shadowBlur=0;
+      c.fillStyle='#b3565a'}
+    else{c.fillStyle='#5d6a92';c.beginPath();c.arc(p[0],p[1],4,0,6.2832);c.fill();c.fillStyle='#7f8bb0'}
+    c.fillText(i,q[0],q[1]);}
+  // 次に出る◇（予告）
+  if(v.next&&playing){const p=nodeXY(v.next.cell,n),r=8;c.save();c.translate(p[0],p[1]);c.setLineDash([3,3]);
+    c.beginPath();c.moveTo(0,-r);c.lineTo(r,0);c.lineTo(0,r);c.lineTo(-r,0);c.closePath();
+    c.fillStyle='#0a0d18';c.fill();c.lineWidth=1.5;c.strokeStyle='rgba(185,255,176,.7)';c.stroke();c.restore()}
+  // ◆
+  for(const t of v.targets){const p=nodeXY(t.cell,n),left=t.par-t.used,live=left>=0;
+    const born=Math.min(1,(now-(t.born||0))/180),pul=1+Math.sin(now/170)*.07,r=14*born*(live?pul:.85);
+    c.save();c.translate(p[0],p[1]);
+    c.beginPath();c.moveTo(0,-r);c.lineTo(r,0);c.lineTo(0,r);c.lineTo(-r,0);c.closePath();
+    if(live){c.shadowColor='#b9ffb0';c.shadowBlur=16;c.fillStyle='#b9ffb0';c.fill();c.shadowBlur=0;
+      c.fillStyle='#0a2a14';c.font='800 14px system-ui,sans-serif';c.fillText(left,0,1)}
+    else{c.lineWidth=2;c.strokeStyle='rgba(185,255,176,.55)';c.fillStyle='#0a0d18';c.fill();c.stroke()}
+    c.restore();}
+  // 光（プレイヤー）
+  c.shadowColor='#fff';c.shadowBlur=22;c.fillStyle='#fff';c.beginPath();c.arc(G.px,G.py,9,0,6.2832);c.fill();c.shadowBlur=0;
+  c.strokeStyle='rgba(255,255,255,.5)';c.lineWidth=2;c.beginPath();c.arc(G.px,G.py,13+Math.sin(now/120)*1.5,0,6.2832);c.stroke();
+  // 波紋・粒・文字
+  for(const w of G.waves){const a=1-w.age/.5;c.globalAlpha=Math.max(0,a);c.strokeStyle='#ffd66b';c.lineWidth=3;c.beginPath();c.arc(w.x,w.y,14+w.age*120,0,6.2832);c.stroke()}
+  for(const p of G.parts){c.globalAlpha=Math.max(0,1-p.age/p.life);c.fillStyle=p.col;c.fillRect(p.x-2,p.y-2,4,4)}
+  c.font='800 15px system-ui,sans-serif';
+  for(const f of G.floats){c.globalAlpha=Math.max(0,1-f.age/1.0);c.fillStyle=f.col;c.fillText(f.text,Math.max(70,Math.min(W-70,f.x)),f.y-f.age*26)}
+  c.globalAlpha=1;
+  // 中央表示
+  if(G.core&&playing){
+    const co=G.core;
+    if(G.state==='count'){c.fillStyle='#fff';c.font='900 '+Math.round(G.R*.55)+'px system-ui,sans-serif';c.fillText(Math.max(1,Math.ceil(G.countT)),G.cx,G.cy-6);
+      c.font='600 13px system-ui,sans-serif';c.fillStyle='#8b95b5';c.fillText('歩幅  '+co.steps.map(stepLbl).join('   '),G.cx,G.cy+G.R*.36)}
+    else if(co.combo>0){c.fillStyle='#ffd66b';c.font='900 '+Math.round(G.R*.42)+'px system-ui,sans-serif';c.fillText('×'+co.mult(),G.cx,G.cy-4);
+      c.font='600 12px system-ui,sans-serif';c.fillStyle='#b9a15a';c.fillText('最短 '+co.combo+' 連続',G.cx,G.cy+G.R*.28)}
+    else{c.fillStyle='rgba(139,149,181,.35)';c.font='800 '+Math.round(G.R*.2)+'px system-ui,sans-serif';c.fillText('mod '+co.n,G.cx,G.cy)}
+  }
+  if(G.flash>0){c.setTransform(1,0,0,1,0,0);c.fillStyle='rgba(255,60,60,'+(G.flash*.5)+')';c.fillRect(0,0,cv.width,cv.height)}
+}
+let last=performance.now();
+function loop(now){
+  let dt=Math.min(0.1,(now-last)/1000);last=now;
+  if(G.state==='count'){
+    G.countT-=dt;const k=Math.ceil(G.countT);
+    if(k<G.lastCount&&k>=1){G.lastCount=k;SE.count(false)}
+    if(G.countT<=0){G.state='play';G.core.active=true;SE.count(true);for(const b of $('pads').children)b.disabled=false}
+  }else if(G.state==='play'){
+    G.core.tick(dt);
+    if(G.core&&G.state==='play'){const s=Math.ceil(G.core.timeLeft);if(s<=5&&s<G.warned){G.warned=s;SE.warn()}}
+  }else if(G.state==='title'){
+    const d=G.demo;d.t+=dt;if(d.t>0.42){d.t=0;const a=nodeXY(d.pos,d.n);d.pos=mod(d.pos+d.steps[0],d.n);const b=nodeXY(d.pos,d.n);
+      G.trails.push({a,b,col:COL[(d.pos%3)],age:0});if(G.trails.length>14)G.trails.shift();G.ax=G.px;G.ay=G.py;G.at=0}
+  }
+  if(G.state!=='pause'){
+    const v=view(),tp=nodeXY(v.pos,v.n);
+    if(G.at<1){G.at=Math.min(1,G.at+dt/0.1);const e=1-Math.pow(1-G.at,3);G.px=G.ax+(tp[0]-G.ax)*e;G.py=G.ay+(tp[1]-G.ay)*e}else{G.px=tp[0];G.py=tp[1]}
+    for(const t of G.trails)t.age+=dt;while(G.trails.length&&G.trails[0].age>1.8)G.trails.shift();
+    for(const p of G.parts){p.age+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.94;p.vy*=.94}G.parts=G.parts.filter(p=>p.age<p.life);
+    for(const f of G.floats)f.age+=dt;G.floats=G.floats.filter(f=>f.age<1);
+    for(const w of G.waves)w.age+=dt;G.waves=G.waves.filter(w=>w.age<.5);
+    G.shake=Math.max(0,G.shake-dt);G.flash=Math.max(0,G.flash-dt);
+    updateHud();
+  }
+  draw(dt,now);
+  requestAnimationFrame(loop);
+}
+
+// ----- 入力 -----
+const KEYMAP2={ArrowLeft:0,a:0,'1':0,j:0,ArrowRight:1,d:1,'2':1,l:1};
+const KEYMAP3={ArrowLeft:0,a:0,'1':0,j:0,ArrowDown:1,ArrowUp:1,s:1,'2':1,k:1,ArrowRight:2,d:2,'3':2,l:2};
+window.addEventListener('keydown',e=>{
+  if(e.repeat)return;const k=e.key.length===1?e.key.toLowerCase():e.key;
+  if(G.state==='play'){const m=G.core.steps.length===2?KEYMAP2:KEYMAP3;
+    if(k in m){e.preventDefault();press(m[k]);return}
+    if(k==='p'||k==='Escape'){pause();return}}
+  else if(G.state==='count'&&(k==='p'||k==='Escape'))pause();
+  else if(G.state==='pause'&&(k==='p'||k==='Escape'||k==='Enter'||k===' '))resume();
+  else if(G.state==='inter'&&(k==='Enter'||k===' ')&&$('ovInter').classList.contains('on')){e.preventDefault();nextFromInter()}
+  else if(G.state==='result'&&(k==='Enter'||k===' ')){e.preventDefault();startRun(G.mode)}
+});
+function tap(id,fn){$(id).addEventListener('click',e=>{audioInit();fn(e)})}
+tap('btStart',()=>{if(!ls('mr_seen')){ls('mr_seen','1');G.afterHow='random';SE.click();show('ovHow')}else startRun('random')});
+tap('btDaily',()=>{if(!ls('mr_seen')){ls('mr_seen','1');G.afterHow='daily';SE.click();show('ovHow')}else startRun('daily')});
+tap('btHow',()=>{SE.click();G.afterHow=null;show('ovHow')});
+tap('btHowOk',()=>{if(G.afterHow){const m=G.afterHow;G.afterHow=null;startRun(m)}else{SE.click();show('ovTitle')}});
+tap('btNext',nextFromInter);
+tap('btRetry',()=>startRun(G.mode));
+tap('btTitle',()=>{SE.click();toTitle()});
+tap('btResume',()=>{resume();SE.click()});
+tap('btQuit',()=>{SE.click();toTitle()});
+tap('tgM',()=>{setMusic(!AU.music);refreshToggles()});
+tap('tgS',()=>{setSfx(!AU.sfx);refreshToggles();SE.click()});
+tap('tgP',()=>{if(G.state==='pause')resume();else pause()});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// タブを離れたら音もゲームも止める
+function onHide(){pause();if(AU.ctx&&AU.ctx.state==='running')AU.ctx.suspend()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)onHide();else if(AU.ctx)AU.ctx.resume()});
+window.addEventListener('pagehide',onHide);
+
+refreshToggles();refreshBest();resize();updateHud();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
